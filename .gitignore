@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+
+# Never commit user config — it holds API keys.
+.orchestra/
+config.json

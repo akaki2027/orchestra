@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orchestra</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">Orchestra<span id="bigAgentLabel">no big agent selected</span></div>
+  <nav>
+    <button data-view="chat" class="active">Chat</button>
+    <button data-view="agents">Agents</button>
+    <button data-view="models">Models</button>
+    <button data-view="settings">Settings</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ================= CHAT ================= -->
+  <section class="view" id="view-chat">
+    <div class="card">
+      <div class="row">
+        <label class="field grow" style="margin:0">
+          <span>Big agent — plans the work and writes the final answer</span>
+          <select id="bigAgentModel"></select>
+        </label>
+        <label class="field" style="margin:0;min-width:190px">
+          <span>Mode</span>
+          <select id="mode">
+            <option value="auto">Auto — it plans and delegates</option>
+            <option value="manual">Pipeline — my fixed order</option>
+            <option value="direct">Direct — just this model</option>
+          </select>
+        </label>
+      </div>
+      <div id="agentPicker" hidden style="margin-top:12px">
+        <span class="detail" id="agentPickerLabel"></span>
+        <div class="row" id="agentPickerList" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div id="runNotice"></div>
+
+    <!-- The answer leads; the per-agent detail sits underneath it. Having the
+         sub-agent cards first meant scrolling past a wall of intermediate
+         output to reach the thing you actually asked for. -->
+    <div class="card">
+      <div id="transcript"><p class="empty">Ask for something. In Auto mode the big agent decides which sub-agents to run, and independent ones run at the same time.</p></div>
+      <div class="composer">
+        <textarea id="prompt" class="grow" placeholder="What do you want done?" rows="2"></textarea>
+        <button class="btn" id="send">Send</button>
+        <button class="btn ghost" id="stop" hidden>Stop</button>
+      </div>
+    </div>
+
+    <div class="card" id="runPanel" hidden>
+      <div class="card-head">
+        <button class="btn small ghost" id="toggleNodes">Hide</button>
+        <h3>Sub-agents</h3>
+        <span class="spacer"></span>
+        <span class="lane-summary" id="laneSummary"></span>
+      </div>
+      <div class="nodes" id="nodes"></div>
+    </div>
+  </section>
+
+  <!-- ================= AGENTS ================= -->
+  <section class="view" id="view-agents" hidden>
+    <h2>Sub-agents</h2>
+    <p class="lede">Each agent is a <strong>model</strong>, a <strong>soul</strong>, and a <strong>role</strong>. Any agent can sit on any provider — local or API — and they run simultaneously.</p>
+    <div id="agentsNotice"></div>
+    <div class="card">
+      <div class="card-head">
+        <h3>Your agents</h3>
+        <span class="spacer"></span>
+        <button class="btn small" id="newAgent">New agent</button>
+      </div>
+      <div id="agentList"></div>
+    </div>
+  </section>
+
+  <!-- ================= MODELS ================= -->
+  <section class="view" id="view-models" hidden>
+    <h2>Models</h2>
+    <p class="lede">Local models live on your disk and can be downloaded or removed here. Cloud models are hosted — you select them, there is nothing to download.</p>
+    <div class="tabs">
+      <button data-tab="installed" class="active">Installed</button>
+      <button data-tab="browse">Download</button>
+      <button data-tab="cloud">Cloud</button>
+    </div>
+
+    <div id="tab-installed">
+      <div id="installedNotice"></div>
+      <div class="card"><div id="installedList"></div></div>
+    </div>
+
+    <div id="tab-browse" hidden>
+      <div class="card">
+        <h3>Pull any model by name</h3>
+        <p class="detail" style="margin:0 0 12px">
+          An Ollama library name like <code>qwen2.5:7b</code>, or a Hugging Face GGUF
+          reference like <code>hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M</code>.
+        </p>
+        <div class="row">
+          <input type="text" id="pullName" class="grow" placeholder="model name or hf.co/user/repo:quant">
+          <button class="btn" id="pullBtn">Download</button>
+        </div>
+        <div id="pullStatus"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Suggested</h3></div>
+        <p class="detail" style="margin:-4px 0 12px">
+          Ollama has no public search API, so this is a hand-picked starting list rather
+          than a live index. Anything not here still works in the box above.
+        </p>
+        <div id="catalogList"></div>
+      </div>
+    </div>
+
+    <div id="tab-cloud" hidden>
+      <div class="card"><div id="cloudList"></div></div>
+    </div>
+  </section>
+
+  <!-- ================= SETTINGS ================= -->
+  <section class="view" id="view-settings" hidden>
+    <h2>Providers</h2>
+    <p class="lede">Connect whichever you use. Keys are stored on this machine only, in <code id="homePath">~/.orchestra</code>, readable by you alone — never in the repo.</p>
+    <div id="providerCards"></div>
+
+    <div class="card">
+      <div class="card-head"><h3>Parallelism</h3></div>
+      <p class="detail" style="margin:-4px 0 14px">
+        How many sub-agents may run at once per provider. Cloud lanes run wide because
+        they are network-bound. The local lane is small because models compete for RAM —
+        and because it is separate, a busy local lane never holds up your cloud agents.
+      </p>
+      <div class="row" id="laneLimits"></div>
+      <button class="btn small" id="saveLanes" style="margin-top:14px">Save limits</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- agent editor -->
+<dialog id="agentDialog">
+  <form method="dialog">
+    <div class="dlg-body">
+      <h3 id="agentDialogTitle">New agent</h3>
+      <div id="agentFormError"></div>
+
+      <label class="field">
+        <span>Name</span>
+        <input type="text" id="fName" placeholder="Scout">
+      </label>
+
+      <label class="field">
+        <span>id — lowercase, no spaces. Cannot be changed later.</span>
+        <input type="text" id="fId" placeholder="scout">
+      </label>
+
+      <label class="field">
+        <span>Role</span>
+        <input type="text" id="fRole" placeholder="Finds and verifies current facts on a topic">
+        <span class="hint">The big agent reads this to decide what to send here. Write it for a router, not a human.</span>
+      </label>
+
+      <label class="field">
+        <span>Soul</span>
+        <textarea id="fSoul" class="soul" placeholder="Who this agent is: its voice, standards, and what it refuses to do."></textarea>
+        <span class="hint">Optional, but it is what makes two agents on the same model behave like different people.</span>
+      </label>
+
+      <label class="field">
+        <span>Model — any provider, local or API</span>
+        <select id="fModel"></select>
+      </label>
+
+      <label class="field">
+        <span>Creativity (temperature)</span>
+        <input type="number" id="fTemp" min="0" max="2" step="0.1" placeholder="0.4">
+      </label>
+
+      <label class="checkbox">
+        <input type="checkbox" id="fResearch">
+        <span><strong>Can research the web.</strong> Off by default. Anthropic agents use Anthropic's
+        own server-side search; other providers use a read-only fetch on this machine. Fetched pages
+        are treated as untrusted data, never as instructions.</span>
+      </label>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn ghost" value="cancel">Cancel</button>
+      <button class="btn" id="saveAgent" value="save">Save agent</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -117,13 +117,20 @@ const slot = (v) => {
 
 /* --------------------------------------------------------------- desks */
 
+function showDesk(name) {
+  const known = $$(".desk-nav button").map((b) => b.dataset.desk);
+  const desk = known.includes(name) ? name : "run";
+  $$(".desk-nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.desk === desk ? "page" : "false"));
+  $$(".desk").forEach((d) => { d.hidden = d.id !== `desk-${desk}`; });
+  if (desk === "models") loadInstalled();
+  if (location.hash.slice(1) !== desk) history.replaceState(null, "", `#${desk}`);
+}
+
+// Hash routing so a section can be linked, bookmarked, and reloaded into.
 $$(".desk-nav button").forEach((b) => {
-  b.addEventListener("click", () => {
-    $$(".desk-nav button").forEach((o) => o.setAttribute("aria-current", o === b ? "page" : "false"));
-    $$(".desk").forEach((d) => { d.hidden = d.id !== `desk-${b.dataset.desk}`; });
-    if (b.dataset.desk === "models") loadInstalled();
-  });
+  b.addEventListener("click", () => showDesk(b.dataset.desk));
 });
+window.addEventListener("hashchange", () => showDesk(location.hash.slice(1)));
 
 $$(".tabs button").forEach((b) => {
   b.addEventListener("click", () => {
@@ -473,9 +480,8 @@ function resetHall() {
   state.strips.clear();
   $("#interior").innerHTML = "";
   $("#exterior").innerHTML = "";
-  $("#hall").hidden = true;
+  $("#hallEmpty").hidden = false;
   $("#slip").hidden = true;
-  $("#exteriorLabel").hidden = true;
   $("#borderNote").textContent = "nothing has crossed";
   say("#alert", "");
   tallyHall();
@@ -497,7 +503,7 @@ function stripFor(id) {
   $("#interior").appendChild(card);
   s = { card, tick, who, badge, meta, task, out, side: "interior", status: "pending" };
   state.strips.set(id, s);
-  $("#hall").hidden = false;
+  $("#hallEmpty").hidden = true;
   return s;
 }
 
@@ -508,7 +514,6 @@ function place(s, side) {
   if (s.card.parentElement !== bay) bay.appendChild(s.card);
   s.side = side;
   s.card.classList.toggle("exterior", side === "exterior");
-  if (side === "exterior") $("#exteriorLabel").hidden = false;
   tallyHall();
 }
 
@@ -968,6 +973,7 @@ async function boot() {
   await loadAgents();
   await loadSuggested();
   renderRoster();
+  showDesk(location.hash.slice(1));
 
   if (!Object.values(state.providers).some((p) => p.status?.state === "ok")) {
     say("#alert", "No provider is connected yet. Open Settings to add a key, or point at a local Ollama server.", "warn");

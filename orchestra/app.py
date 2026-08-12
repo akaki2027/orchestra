@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config
@@ -41,8 +41,25 @@ def create_app() -> FastAPI:
         app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
         @app.get("/")
-        async def index() -> FileResponse:
-            return FileResponse(WEB_DIR / "index.html")
+        async def index() -> HTMLResponse:
+            """Serve index.html with cache-busted asset URLs.
+
+            Without this, editing style.css or app.js changes nothing until the
+            user knows to hard-refresh — which they shouldn't have to, and which
+            made a rebuilt UI look like it had not shipped at all. The stamp is
+            derived from file mtimes, so the browser refetches exactly when an
+            asset actually changed and caches it otherwise.
+            """
+            html = (WEB_DIR / "index.html").read_text()
+            for asset in ("style.css", "app.js"):
+                try:
+                    stamp = int((WEB_DIR / asset).stat().st_mtime)
+                except OSError:
+                    continue
+                html = html.replace(f"/static/{asset}", f"/static/{asset}?v={stamp}")
+            # The document itself must never be cached, or it would keep
+            # handing out yesterday's stamps.
+            return HTMLResponse(html, headers={"Cache-Control": "no-store, must-revalidate"})
 
     return app
 

@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-12T16:50:09+00:00",
+  "title": "Design System: Orchestra",
+  "extensions": {
+    "colorMeta": {
+      "ink-ground": {
+        "role": "primary",
+        "displayName": "Border Post Ink",
+        "canonical": "#14100f",
+        "tonalRamp": [
+          "#0b0908",
+          "#14100f",
+          "#191413",
+          "#1e1817",
+          "#241d1b",
+          "#352926",
+          "#4c3b36",
+          "#6b544d"
+        ]
+      },
+      "brand-gold": {
+        "role": "primary",
+        "displayName": "Brand Gold",
+        "canonical": "#d9c48c",
+        "tonalRamp": [
+          "#2b2517",
+          "#3d3421",
+          "#4a3f28",
+          "#6d5c39",
+          "#94804f",
+          "#b8a26a",
+          "#d9c48c",
+          "#efe3c2"
+        ]
+      },
+      "channel-green": {
+        "role": "secondary",
+        "displayName": "Green Channel",
+        "canonical": "#56b47a",
+        "tonalRamp": [
+          "#122419",
+          "#1b3626",
+          "#2b4a39",
+          "#37674a",
+          "#44895d",
+          "#56b47a",
+          "#7fcb9b",
+          "#b3e3c5"
+        ]
+      },
+      "channel-red": {
+        "role": "secondary",
+        "displayName": "Red Channel",
+        "canonical": "#d75046",
+        "tonalRamp": [
+          "#2a110f",
+          "#3b1815",
+          "#4d2724",
+          "#6f342f",
+          "#9c433b",
+          "#d75046",
+          "#e5807a",
+          "#f2b5b1"
+        ]
+      },
+      "channel-amber": {
+        "role": "tertiary",
+        "displayName": "Amber Hold",
+        "canonical": "#dda03a",
+        "tonalRamp": [
+          "#2b2010",
+          "#3a2b14",
+          "#4a3a1e",
+          "#6d5326",
+          "#997430",
+          "#dda03a",
+          "#ecc077",
+          "#f6dfb3"
+        ]
+      },
+      "stock": {
+        "role": "neutral",
+        "displayName": "Security Stock",
+        "canonical": "#e9e2d5",
+        "tonalRamp": [
+          "#2a2620",
+          "#463f34",
+          "#635a4b",
+          "#847a68",
+          "#a89d89",
+          "#c9beaa",
+          "#e9e2d5",
+          "#f7f3ec"
+        ]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Desk Text",
+        "canonical": "#f0e8dd",
+        "tonalRamp": []
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Secondary Text",
+        "canonical": "#bdb0a3",
+        "tonalRamp": []
+      },
+      "text-tertiary": {
+        "role": "neutral",
+        "displayName": "Chrome Text",
+        "canonical": "#8f8175",
+        "tonalRamp": []
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Desk Title",
+        "purpose": "One per section heading; never stacked."
+      },
+      "label": {
+        "displayName": "Field Name",
+        "purpose": "Tracked mono caps for field names, stamps, buttons, nav. Max ~30 characters."
+      },
+      "data": {
+        "displayName": "Route Data",
+        "purpose": "Model ids, provider routes, elapsed time, the machine-readable zone. Tabular figures."
+      }
+    },
+    "shadows": [
+      {
+        "name": "lift",
+        "value": "0 2px 4px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.32)",
+        "purpose": "The agent dialog. The only modal surface."
+      },
+      {
+        "name": "slip",
+        "value": "0 3px 6px rgba(0,0,0,0.45), 0 18px 44px rgba(0,0,0,0.4)",
+        "purpose": "The declaration. Heavier and longer because it is paper resting on the desk."
+      }
+    ],
+    "motion": [
+      {
+        "name": "press",
+        "value": "220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The stamp landing. Rotates from -9deg at 1.22 scale to rest. The one authored moment."
+      },
+      {
+        "name": "settle",
+        "value": "250ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Download gauge scaleX. Transform only, never width."
+      },
+      {
+        "name": "breathe",
+        "value": "1.5s ease-in-out infinite",
+        "purpose": "The live tick on a working strip. Stops under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "720px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled control on screen. Security stock on ink.",
+      "html": "<button class=\"ds-btn\">\u2192 Present</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;gap:7px;background:#e9e2d5;color:#14100f;border:1px solid #e9e2d5;border-radius:2px;padding:8px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;font-size:11px;font-weight:700;cursor:pointer}.ds-btn:hover{background:#fff;border-color:#fff}.ds-btn:focus-visible{outline:2px solid #d9c48c;outline-offset:2px}"
+    },
+    {
+      "name": "Line Button",
+      "kind": "button",
+      "refersTo": "button-line",
+      "description": "Secondary action. Transparent with a lit rule.",
+      "html": "<button class=\"ds-btn-line\">Halt</button>",
+      "css": ".ds-btn-line{display:inline-flex;align-items:center;gap:7px;background:none;color:#f0e8dd;border:1px solid #4c3b36;border-radius:2px;padding:8px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;font-size:11px;font-weight:700;cursor:pointer}.ds-btn-line:hover{background:#1e1817;border-color:#e9e2d5}.ds-btn-line:focus-visible{outline:2px solid #d9c48c;outline-offset:2px}"
+    },
+    {
+      "name": "Stamp",
+      "kind": "custom",
+      "refersTo": "stamp-cleared",
+      "description": "Status as a pressed rubber stamp. Word plus border, rotated, never colour alone.",
+      "html": "<span class=\"ds-stamp ds-stamp-cleared\">interior</span> <span class=\"ds-stamp ds-stamp-declared\">crossing</span> <span class=\"ds-stamp ds-stamp-refused\">turned back</span>",
+      "css": ".ds-stamp{display:inline-flex;align-items:center;border:1.5px solid currentColor;border-radius:2px;padding:2px 7px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:600;transform:rotate(-1.5deg);animation:ds-press 220ms cubic-bezier(.16,1,.3,1)}.ds-stamp-cleared{color:#56b47a}.ds-stamp-declared{color:#d75046}.ds-stamp-refused{color:#d75046;border-width:2px;transform:rotate(-4deg)}@keyframes ds-press{0%{transform:rotate(-9deg) scale(1.22);opacity:0}60%{opacity:1}100%{transform:rotate(-1.5deg) scale(1);opacity:1}}@media(prefers-reduced-motion:reduce){.ds-stamp{animation:none}}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Every container. Tonal depth, hairline rule, no shadow.",
+      "html": "<div class=\"ds-panel\"><div class=\"ds-panel-head\"><h3>Inspection hall</h3></div><div class=\"ds-panel-body\">Body copy sits here.</div></div>",
+      "css": ".ds-panel{background:#191413;border:1px solid #352926;border-radius:3px;color:#f0e8dd}.ds-panel-head{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid #352926}.ds-panel-head h3{margin:0;font:600 15px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:-.01em}.ds-panel-body{padding:16px;font:400 15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Tracked-caps name over a sunken trough. Gold focus ring.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Controlling agent</span><input type=\"text\" placeholder=\"qwen2.5:3b\"></label>",
+      "css": ".ds-field{display:block}.ds-field-label{display:block;margin-bottom:6px;color:#8f8175;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:600}.ds-field input{width:100%;background:#241d1b;border:1px solid #352926;border-radius:2px;padding:8px 10px;color:#f0e8dd;font:400 15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}.ds-field input::placeholder{color:#8f8175}.ds-field input:hover{border-color:#4c3b36}.ds-field input:focus-visible{outline:2px solid #d9c48c;outline-offset:2px}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Toggle for agent selection and declarable items. State on aria-pressed.",
+      "html": "<button class=\"ds-chip\" aria-pressed=\"false\">Scout</button> <button class=\"ds-chip\" aria-pressed=\"true\">Writer</button>",
+      "css": ".ds-chip{background:none;border:1px solid #4c3b36;border-radius:2px;color:#8f8175;padding:4px 9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;font-size:11px;font-weight:600;cursor:pointer}.ds-chip:hover{color:#f0e8dd;border-color:#e9e2d5}.ds-chip[aria-pressed=\"true\"]{background:#e9e2d5;border-color:#e9e2d5;color:#14100f}.ds-chip:focus-visible{outline:2px solid #d9c48c;outline-offset:2px}"
+    },
+    {
+      "name": "Border Legend",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "The membrane. Splits the hall into interior above and exterior below.",
+      "html": "<div class=\"ds-border\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 8h12\"/><path d=\"M10.4 4.4 14 8l-3.6 3.6\"/></svg><span class=\"ds-border-txt\">Border</span><span class=\"ds-border-sub\">1 of 6 crossed</span></div>",
+      "css": ".ds-border{display:flex;align-items:center;gap:10px;padding:7px 16px;background:#1e1817;border-top:1px solid #4c3b36;border-bottom:1px solid #4c3b36;color:#d75046}.ds-border-txt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:700}.ds-border-sub{margin-left:auto;color:#8f8175;font:400 12px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}"
+    },
+    {
+      "name": "Declaration Slip",
+      "kind": "custom",
+      "refersTo": "declaration-slip",
+      "description": "The run's receipt. The only inverted surface, one per run.",
+      "html": "<div class=\"ds-slip\"><div class=\"ds-slip-head\"><span>Declaration</span><span class=\"ds-slip-verdict\">3 items withheld</span></div><div class=\"ds-slip-body\"><table><tr><td class=\"ds-route\">anthropic \u00b7 claude-opus-5</td><td><span class=\"ds-decl ds-decl-red\">red</span></td><td class=\"ds-qty\">3 withheld \u00b7 812 chars</td></tr></table></div><div class=\"ds-slip-foot\"><p class=\"ds-mrz\">ORC&lt;REDACT&lt;LOCAL002&lt;REMOTE001&lt;HELD003&lt;&lt;&lt;&lt;</p></div></div>",
+      "css": ".ds-slip{background:#e9e2d5;color:#1a1513;border-radius:2px;box-shadow:0 3px 6px rgba(0,0,0,.45),0 18px 44px rgba(0,0,0,.4);overflow:hidden;font:400 15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}.ds-slip-head{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #b9ae9b;color:#5c5044;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:600}.ds-slip-verdict{margin-left:auto;color:#1a1513}.ds-slip-body{padding:14px 16px 4px}.ds-slip table{width:100%;border-collapse:collapse;font-size:13px}.ds-slip td{padding:7px 0;border-bottom:1px dotted #b9ae9b}.ds-route{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.ds-qty{text-align:right;font-variant-numeric:tabular-nums}.ds-decl{display:inline-flex;border:1.5px solid currentColor;border-radius:2px;padding:1px 6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;font-size:11px;font-weight:700}.ds-decl-red{color:#a83228}.ds-slip-foot{padding:10px 16px 12px;border-top:1px solid #b9ae9b;background:#ded6c7;color:#4a4038}.ds-mrz{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;letter-spacing:.06em;word-break:break-all}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Border Post",
+    "overview": "Orchestra's job is to decide what crosses a boundary. Agents run on models you hold or on models somebody else holds, and those are not the same kind of place. So the interface is not a dashboard that reports on a boundary \u2014 it is the boundary. Work is inspected, stamped, and either cleared or turned back, and every run ends with a document handed across the counter.\n\nThe surface is a night desk: an oxblood-ink ground, hairline rules, tracked mono caps on the form fields, and a faint conic grain standing in for paper tooth. It is dark because the use scene is dark. Warmth comes from the ink being red-brown rather than blue-black, which is also what keeps it out of the near-black-plus-neon look every agent tool ships.\n\nOne material breaks the ink, exactly once per run: a sheet of security paper carrying the declaration. That scarcity is what makes it read as a document you were handed rather than a panel that changed colour.",
+    "keyCharacteristics": [
+      "Warm near-black ground, not the category's blue-black",
+      "Status carried by pressed rubber stamps and by position, never by hue alone",
+      "Brand gold for identity; green and red reserved for channel state",
+      "Tracked monospace caps for field names, system sans for everything readable",
+      "Zero third-party requests: type is system stacks by product constraint"
+    ],
+    "rules": [
+      {
+        "name": "The Two Jobs Rule",
+        "body": "Gold means 'this is Orchestra'. Green and red mean 'this is where the work ran'. A colour never does both jobs.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Sheet Rule",
+        "body": "Security stock is a field on exactly one element per run \u2014 the declaration. If a second paper surface appears, the first has stopped meaning anything.",
+        "section": "colors"
+      },
+      {
+        "name": "The Colour Is Not The Signal Rule",
+        "body": "Every state readable by colour is also readable without it. Render greyscale; no state may become ambiguous.",
+        "section": "colors"
+      },
+      {
+        "name": "The Field-Name Rule",
+        "body": "Tracked uppercase is a name, not a sentence. Max ~30 characters; anything longer is sentence case in the note beneath.",
+        "section": "typography"
+      },
+      {
+        "name": "The Eleven Pixel Floor",
+        "body": "No interactive or status text below 11px.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Any number that changes in place uses tabular figures so it stops jittering.",
+        "section": "typography"
+      },
+      {
+        "name": "The Gap Is The Divider Rule",
+        "body": "Inside the hall, separation is a 1px grid gap over a rule-coloured background, not borders on each strip.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Desk Rule",
+        "body": "Only the dialog and the declaration cast a shadow. Everything else earns depth from tone.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Barely-Round Rule",
+        "body": "Radius is 2px, not 8px. This is printed stationery, not an app card.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do state every status in a word inside a stamp, so meaning survives greyscale and colour-blindness.",
+      "Do keep gold for identity and green/red for channel; for a new state look for a position or a stamp first.",
+      "Do cap explanatory copy at 68ch and set it in sentence case beneath the control it explains.",
+      "Do animate transform and opacity only; the gauge scales on X rather than animating width.",
+      "Do honour prefers-reduced-motion: the stamp press and live tick stop, and nothing becomes ambiguous.",
+      "Do draw icons from the shared 16px sprite at 1.5px stroke with round caps and joins.",
+      "Do give both border zones a label from first load, even when empty."
+    ],
+    "donts": [
+      "Don't add a shadow to anything that is not the dialog or the declaration.",
+      "Don't use security stock as a panel background. One sheet per run.",
+      "Don't set a tracked-uppercase string longer than about thirty characters.",
+      "Don't put interactive or status text below 11px.",
+      "Don't introduce a webfont, icon font, or any third-party asset request.",
+      "Don't rely on hidden alone for a component that sets its own display.",
+      "Don't use red to mean 'error' in the hall or on the declaration; red is the declare channel."
+    ]
+  }
+}

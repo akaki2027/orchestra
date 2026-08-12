@@ -55,6 +55,17 @@ function stamp(kind, label, pressed = false) {
   return el("span", { class: `stamp ${kind}${pressed ? " press" : ""}` }, [label]);
 }
 
+/* A border post refuses things with a stamp, not with a browser alert. */
+function confirmRefuse(title, body) {
+  return new Promise((resolve) => {
+    const dlg = $("#confirmDlg");
+    $("#confirmTitle").textContent = title;
+    $("#confirmBody").textContent = body;
+    dlg.addEventListener("close", () => resolve(dlg.returnValue === "go"), { once: true });
+    dlg.showModal();
+  });
+}
+
 async function api(path, opts = {}) {
   const res = await fetch(path, {
     headers: { "Content-Type": "application/json" },
@@ -182,11 +193,18 @@ async function loadModels() {
 }
 
 function markPosting() {
-  const s = slot($("#chief").value);
-  const el_ = $("#posting");
-  if (!s) { el_.textContent = "no controlling agent assigned"; return; }
-  const local = state.models.find((m) => m.provider === s.provider && m.id === s.model)?.local;
-  el_.textContent = `${s.model} · ${local ? "interior" : "crosses the border"}`;
+  const sel = slot($("#chief").value);
+  const host = $("#posting");
+  host.innerHTML = "";
+  if (!sel) {
+    host.appendChild(el("span", { class: "model", text: "no controlling agent" }));
+    return;
+  }
+  const local = state.models.find((m) => m.provider === sel.provider && m.id === sel.model)?.local;
+  host.append(
+    el("span", { class: "model", text: sel.model }),
+    stamp(local ? "cleared" : "declared", local ? "interior" : "exterior")
+  );
 }
 
 $("#chief").addEventListener("change", async () => {
@@ -375,7 +393,11 @@ function renderAgents() {
       el("button", {
         class: "btn refuse sm", text: "Delete",
         onclick: async () => {
-          if (!confirm(`Delete the agent "${a.name || a.id}"?`)) return;
+          const go = await confirmRefuse(
+            `Turn back ${a.name || a.id}?`,
+            "The agent and its soul are deleted from this machine. Nothing else in the run is affected."
+          );
+          if (!go) return;
           await api(`/api/agents/${a.id}`, { method: "DELETE" });
           await loadAgents();
         },
@@ -788,8 +810,10 @@ $("#request").addEventListener("keydown", (e) => {
 /* -------------------------------------------------------- local models */
 
 async function loadInstalled() {
-  const data = await api("/api/local/models");
   const host = $("#installedList");
+  host.innerHTML = "";
+  host.appendChild(el("p", { class: "empty", text: "Reading the disk…" }));
+  const data = await api("/api/local/models");
   host.innerHTML = "";
 
   if (!data.available) {
@@ -812,7 +836,11 @@ async function loadInstalled() {
       el("button", {
         class: "btn refuse sm",
         onclick: async () => {
-          if (!confirm(`Delete ${m.id} from disk?`)) return;
+          const go = await confirmRefuse(
+            `Turn back ${m.id}?`,
+            `${bytes(m.size_bytes)} is freed from this disk. Any agent holding this model will need a new one before it can run again.`
+          );
+          if (!go) return;
           await api(`/api/local/models/${encodeURIComponent(m.id)}`, { method: "DELETE" });
           await loadInstalled();
           await loadModels();
@@ -883,6 +911,7 @@ async function loadRouter() {
   const vision = $("#fVision").getAttribute("aria-pressed") === "true";
 
   const host = $("#routerList");
+  if (!host.children.length) host.appendChild(el("p", { class: "empty", text: "Reading the catalogue…" }));
   let data;
   try {
     data = await api(`/api/openrouter/models?q=${encodeURIComponent(q)}&free=${free}&vision=${vision}&limit=60`);

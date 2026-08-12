@@ -11,16 +11,20 @@ from fastapi.responses import StreamingResponse
 from .. import config
 from ..providers import build
 from ..providers.base import ProviderError
-from ..providers.ollama import OllamaProvider
-from ..providers.openrouter import OpenRouterProvider
 
 router = APIRouter(tags=["catalog"])
 
 
-def _ollama() -> OllamaProvider:
-    provider = build("ollama")
-    assert isinstance(provider, OllamaProvider)
-    return provider
+def _ollama():
+    """The Ollama provider, as the registry hands it out.
+
+    Deliberately untyped, with no isinstance check: `build()` returns a
+    GuardedProvider wrapper, so narrowing to OllamaProvider raises at runtime.
+    That assert shipped and 500'd this whole route for three commits. The
+    wrapper forwards `pull`, `delete`, and `loaded_models` via __getattr__,
+    which is everything this module calls.
+    """
+    return build("ollama")
 
 
 @router.get("/local/models")
@@ -88,10 +92,9 @@ async def delete_model(name: str) -> dict[str, Any]:
 # -- OpenRouter: browse 400+ hosted models, star the ones you'll actually use --
 
 
-def _openrouter() -> OpenRouterProvider:
-    provider = build("openrouter")
-    # build() returns a guarded wrapper; __getattr__ forwards the extras.
-    return provider
+def _openrouter():
+    """Same wrapper caveat as _ollama: no isinstance narrowing."""
+    return build("openrouter")
 
 
 @router.get("/openrouter/models")

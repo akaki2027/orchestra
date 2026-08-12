@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-12T16:50:09+00:00",
+  "generatedAt": "2026-08-12T17:05:29+00:00",
   "title": "Design System: Orchestra",
   "extensions": {
     "colorMeta": {
@@ -111,12 +111,18 @@
         "displayName": "Chrome Text",
         "canonical": "#8f8175",
         "tonalRamp": []
+      },
+      "slip-foot": {
+        "role": "neutral",
+        "displayName": "Slip Footer Band",
+        "canonical": "#ded6c7",
+        "tonalRamp": []
       }
     },
     "typographyMeta": {
       "display": {
-        "displayName": "Desk Title",
-        "purpose": "One per section heading; never stacked."
+        "displayName": "Zone Display",
+        "purpose": "INTERIOR / EXTERIOR either side of the border band. 32px tracked mono caps; the only type at this size."
       },
       "label": {
         "displayName": "Field Name",
@@ -125,6 +131,10 @@
       "data": {
         "displayName": "Route Data",
         "purpose": "Model ids, provider routes, elapsed time, the machine-readable zone. Tabular figures."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Field notes, row sub-labels, and the border band's status line."
       }
     },
     "shadows": [
@@ -170,7 +180,7 @@
       "refersTo": "button-primary",
       "description": "The one filled control on screen. Security stock on ink.",
       "html": "<button class=\"ds-btn\">\u2192 Present</button>",
-      "css": ".ds-btn{display:inline-flex;align-items:center;gap:7px;background:#e9e2d5;color:#14100f;border:1px solid #e9e2d5;border-radius:2px;padding:8px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;font-size:11px;font-weight:700;cursor:pointer}.ds-btn:hover{background:#fff;border-color:#fff}.ds-btn:focus-visible{outline:2px solid #d9c48c;outline-offset:2px}"
+      "css": ".ds-btn{display:inline-flex;align-items:center;gap:7px;background:#1e1817;color:#d9c48c;border:1px solid #d9c48c;border-radius:2px;padding:8px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;font-size:11px;font-weight:700;cursor:pointer}.ds-btn:hover{background:#4a3f28;color:#d9c48c;border-color:#d9c48c}.ds-btn:focus-visible{outline:2px solid #d9c48c;outline-offset:2px}"
     },
     {
       "name": "Line Button",
@@ -210,7 +220,7 @@
       "refersTo": "chip",
       "description": "Toggle for agent selection and declarable items. State on aria-pressed.",
       "html": "<button class=\"ds-chip\" aria-pressed=\"false\">Scout</button> <button class=\"ds-chip\" aria-pressed=\"true\">Writer</button>",
-      "css": ".ds-chip{background:none;border:1px solid #4c3b36;border-radius:2px;color:#8f8175;padding:4px 9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;font-size:11px;font-weight:600;cursor:pointer}.ds-chip:hover{color:#f0e8dd;border-color:#e9e2d5}.ds-chip[aria-pressed=\"true\"]{background:#e9e2d5;border-color:#e9e2d5;color:#14100f}.ds-chip:focus-visible{outline:2px solid #d9c48c;outline-offset:2px}"
+      "css": ".ds-chip{background:none;border:1px solid #4c3b36;border-radius:2px;color:#8f8175;padding:4px 9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.1em;font-size:11px;font-weight:600;cursor:pointer}.ds-chip:hover{color:#f0e8dd;border-color:#e9e2d5}.ds-chip[aria-pressed=\"true\"]{background:#4a3f28;border-color:#d9c48c;color:#d9c48c}.ds-chip:focus-visible{outline:2px solid #d9c48c;outline-offset:2px}"
     },
     {
       "name": "Border Legend",
@@ -284,6 +294,11 @@
         "name": "The Barely-Round Rule",
         "body": "Radius is 2px, not 8px. This is printed stationery, not an app card.",
         "section": "shapes"
+      },
+      {
+        "name": "The Six Steps Rule",
+        "body": "The ramp is 11 / 12.5 / 13.5 / 15 / 20 / 32 and nothing else. A new size means an existing role was wrong.",
+        "section": "typography"
       }
     ],
     "dos": [
@@ -302,7 +317,8 @@
       "Don't put interactive or status text below 11px.",
       "Don't introduce a webfont, icon font, or any third-party asset request.",
       "Don't rely on hidden alone for a component that sets its own display.",
-      "Don't use red to mean 'error' in the hall or on the declaration; red is the declare channel."
+      "Don't use red to mean 'error' in the hall or on the declaration; red is the declare channel.",
+      "Don't spend security stock on chrome; buttons, active nav, and pressed chips are gold-ruled ink."
     ]
   }
 }

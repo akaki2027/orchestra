@@ -22,8 +22,19 @@ colors:
   channel-amber-dim: "#4a3a1e"
   brand-gold: "#d9c48c"
   brand-gold-dim: "#4a3f28"
+  slip-head: "#5c5044"
+  slip-label: "#6b5f52"
+  slip-foot: "#ded6c7"
+  slip-green: "#2f7a4e"
+  slip-red: "#a83228"
 typography:
   display:
+    fontFamily: "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace"
+    fontSize: "32px"
+    fontWeight: 700
+    lineHeight: 1
+    letterSpacing: "0.22em"
+  headline:
     fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
     fontSize: "20px"
     fontWeight: 600
@@ -46,6 +57,12 @@ typography:
     fontSize: "13.5px"
     fontWeight: 400
     lineHeight: 1.55
+    letterSpacing: "normal"
+  caption:
+    fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+    fontSize: "12.5px"
+    fontWeight: 400
+    lineHeight: 1.5
     letterSpacing: "normal"
   label:
     fontFamily: "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace"
@@ -73,14 +90,14 @@ spacing:
   section: "28px"
 components:
   button-primary:
-    backgroundColor: "{colors.stock}"
-    textColor: "{colors.ink-ground}"
+    backgroundColor: "{colors.ink-raised}"
+    textColor: "{colors.brand-gold}"
     typography: "{typography.label}"
     rounded: "{rounded.edge}"
     padding: "8px 14px"
   button-primary-hover:
-    backgroundColor: "#ffffff"
-    textColor: "{colors.ink-ground}"
+    backgroundColor: "{colors.brand-gold-dim}"
+    textColor: "{colors.brand-gold}"
   button-primary-disabled:
     backgroundColor: "{colors.ink-well}"
     textColor: "{colors.text-tertiary}"
@@ -92,7 +109,7 @@ components:
     padding: "8px 14px"
   button-refuse:
     backgroundColor: "transparent"
-    textColor: "{colors.channel-red}"
+    textColor: "{colors.text-tertiary}"
     typography: "{typography.label}"
     rounded: "{rounded.edge}"
     padding: "8px 14px"
@@ -131,8 +148,8 @@ components:
     rounded: "{rounded.edge}"
     padding: "4px 9px"
   chip-pressed:
-    backgroundColor: "{colors.stock}"
-    textColor: "{colors.ink-ground}"
+    backgroundColor: "{colors.brand-gold-dim}"
+    textColor: "{colors.brand-gold}"
   declaration-slip:
     backgroundColor: "{colors.stock}"
     textColor: "{colors.stock-ink}"
@@ -192,14 +209,17 @@ colour has to mean two things.
   The only colour that means "not yet".
 
 ### Neutral
-- **Security Stock** (`#e9e2d5`): The declaration sheet, primary button fills, and the active nav
-  pill. A material, not a tint.
+- **Security Stock** (`#e9e2d5`): The declaration sheet, and nothing else. A material, not a tint —
+  which is why it can only appear once.
 - **Panel** (`#191413`) / **Raised** (`#1e1817`) / **Well** (`#241d1b`): Three ink steps for panel,
   nested surface, and input trough. Depth is tonal, not shadowed.
 - **Rule** (`#352926`) and **Lit Rule** (`#4c3b36`): Hairline dividers; the lit variant marks the
   border itself and any hovered field.
 - **Text** (`#f0e8dd` / `#bdb0a3` / `#8f8175`): Primary, secondary, chrome. All three clear AA on
   their own surfaces; the tertiary step is the floor and never carries body copy.
+- **Slip inks** (`#5c5044` head, `#6b5f52` labels, `#ded6c7` footer band, `#2f7a4e` / `#a83228`
+  channel marks): The declaration's own family. Stock is a light surface, so it needs its own dark
+  text and its own darker channel values; the on-ink green and red would glare against it.
 
 ### Named Rules
 
@@ -227,7 +247,10 @@ constraint: a privacy-first tool that fetches type from a third party on load co
 claim.
 
 ### Hierarchy
-- **Display** (600, 20px, -0.01em): Desk titles. One per section, never stacked.
+- **Display** (700, 32px, 0.22em, uppercase, mono): The zone you are standing in — INTERIOR and
+  EXTERIOR either side of the border band. The only type at this size, and the first thing the eye
+  lands on in the hall.
+- **Headline** (600, 20px, -0.01em): Desk titles. One per section, never stacked.
 - **Title** (600, 15px): Panel headings.
 - **Body** (400, 15px / 1.55): Transcript content, agent output, the answer.
 - **Prose** (400, 13.5px, max 68ch): Explanatory copy under a heading. Always measure-capped.
@@ -298,17 +321,22 @@ aside.
 **The Barely-Round Rule.** Radius is 2px, not 8px. This is printed stationery, not an app card. If
 something needs to feel softer, change its tone, not its corner.
 
+**The Six Steps Rule.** The ramp is 11 / 12.5 / 13.5 / 15 / 20 / 32 and nothing else. Nine sizes
+inside a ten-pixel band is not a hierarchy, it is drift; a new size means an existing role was
+wrong.
+
 ## Components
 
 ### Buttons
 - **Shape:** Barely rounded (2px), inline-flex with a 7px gap so an icon and label sit as one unit.
-- **Primary:** Security stock fill on ink text (`#e9e2d5` on `#14100f`), 8px/14px padding, tracked
-  mono caps at 11px. The one filled control on screen.
-- **Hover / Focus:** Primary goes to pure white. Focus is a 2px gold outline at 2px offset,
+- **Primary:** Raised ink with a 1px gold rule and gold label (`#1e1817` / `#d9c48c`), 8px/14px
+  padding, tracked mono caps at 11px.
+- **Hover / Focus:** Primary fills to dim gold. Focus is a 2px gold outline at 2px offset,
   everywhere, without exception.
 - **Line:** Transparent with a `rule-lit` border; hovers to a stock-coloured border on a raised fill.
-- **Refuse:** Transparent with red text and a dim red border; hovers into the dim red fill. Used only
-  for destructive actions.
+- **Refuse:** Transparent with chrome-grey text and a lit rule at rest, reddening to the dim red fill
+  on hover and focus. Destructive, but red is spent on the exterior channel, so it is not red until
+  you reach for it.
 - **Disabled:** Well-coloured fill, tertiary text, `not-allowed` cursor. Never merely faded.
 
 ### Stamps
@@ -335,11 +363,11 @@ Variants: `cleared` (green), `declared` (red), `transit` (amber), `refused` (red
 
 ### Navigation
 Tracked mono caps at 11px in tertiary. Hover lifts to primary text on a raised fill. The active item
-inverts entirely to security stock with ink text — the only inverted chrome in the product. Sections
+takes a gold rule and gold label on ground ink. Sections
 are hash-routed, so a desk is linkable and survives reload.
 
 ### Chips
-Transparent with a `rule-lit` border and tertiary text; pressed inverts to stock. Used for agent
+Transparent with a `rule-lit` border and tertiary text; pressed takes dim-gold fill with a gold rule. Used for agent
 selection and for the declarable-item toggles. `aria-pressed` carries the state, not just the class.
 
 ### The Border (signature component)
@@ -373,7 +401,14 @@ machine-readable zone (`ORC<REDACT<LOCAL006<REMOTE000<HELD000<<<`). Channel cell
 - **Do** honour `prefers-reduced-motion`: the stamp press and the live tick both stop, and nothing
   becomes ambiguous when they do.
 - **Do** draw icons from the shared 16px sprite at 1.5px stroke with round caps and joins.
-- **Do** give both border zones a label from first load, even when empty.
+- **Do** give both border zones a label from first load, even when empty, and reserve each bay so
+  the split exists before anything runs.
+- **Do** render the border as the hatched band between double rules. It is the mechanism, not a
+  caption; a label bar one tonal step from its panel is not a border.
+- **Do** refuse destructive actions with a stamped dialog in the product's own voice, never a
+  browser `confirm()`.
+- **Do** paint a reading state before awaiting a round-trip. An empty container reads as "nothing
+  here", which is a different and wrong claim.
 
 ### Don't:
 - **Don't** add a shadow to anything that is not the dialog or the declaration. Depth is tonal here.
@@ -386,4 +421,8 @@ machine-readable zone (`ORC<REDACT<LOCAL006<REMOTE000<HELD000<<<`). Channel cell
 - **Don't** rely on `hidden` alone for a component that sets its own display; the global
   `[hidden] { display: none !important }` exists because inline-flex buttons silently ignored it.
 - **Don't** use red to mean "error" in the hall or on the declaration. Red is the declare channel;
-  failure is a `refused` stamp with its own word.
+  failure is a `refused` stamp with its own word, and a destructive button rests in `#8f8175`,
+  reddening only on hover and focus.
+- **Don't** spend security stock on chrome. Buttons, the active nav item, and pressed chips are
+  gold-ruled ink; the moment cream becomes an ordinary button colour, the declaration stops being
+  an event.

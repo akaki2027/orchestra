@@ -121,6 +121,17 @@ h3 { font-size: 15px; }
 
 p { margin: 0; }
 .prose { max-width: 68ch; color: var(--fg-2); font-size: 13.5px; }
+
+/* The loudest lettering in a customs hall is the zone you are standing in.
+   Nothing else on the page competes at this size. */
+.zone-display {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
 .prose strong { color: var(--fg); font-weight: 600; }
 
 code {
@@ -154,7 +165,7 @@ code {
   font-family: var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--gold);
 }
@@ -169,12 +180,18 @@ code {
 .tabs button[aria-selected="true"] { border-bottom-color: var(--gold); }
 
 .post-head .posting {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--fg-3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
   border-left: 1px solid var(--rule);
   padding-left: 20px;
+  min-width: 0;
+}
+.post-head .posting .model {
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--fg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -190,9 +207,9 @@ code {
 }
 .desk-nav button:hover { color: var(--fg); background: var(--ink-800); }
 .desk-nav button[aria-current="page"] {
-  color: var(--ink-900);
-  background: var(--stock);
-  border-color: var(--stock);
+  color: var(--gold);
+  background: var(--ink-900);
+  border-color: var(--gold);
 }
 
 main { max-width: 1160px; margin: 0 auto; padding: 28px 20px 96px; }
@@ -268,9 +285,9 @@ select { appearance: none; padding-right: 30px; background-image: none; }
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: var(--stock);
-  color: var(--ink-900);
-  border: 1px solid var(--stock);
+  background: var(--ink-800);
+  color: var(--gold);
+  border: 1px solid var(--gold);
   border-radius: 2px;
   padding: 8px 14px;
   font-family: var(--mono);
@@ -279,17 +296,18 @@ select { appearance: none; padding-right: 30px; background-image: none; }
   font-size: 11px;
   font-weight: 700;
 }
-.btn:hover { background: #fff; border-color: #fff; }
+.btn:hover { background: var(--gold-dim); color: var(--gold); border-color: var(--gold); }
 .btn:disabled { background: var(--ink-750); color: var(--fg-3); border-color: var(--rule); cursor: not-allowed; }
 
 .btn.line { background: none; color: var(--fg); border-color: var(--rule-lit); }
-.btn.line:hover { background: var(--ink-800); border-color: var(--stock); color: var(--fg); }
+.btn.line:hover { background: var(--ink-800); border-color: var(--gold); color: var(--fg); }
 .btn.line:disabled { background: none; color: var(--fg-3); border-color: var(--rule); }
 
-.btn.refuse { background: none; color: var(--red); border-color: var(--red-dim); }
-.btn.refuse:hover { background: var(--red-dim); border-color: var(--red); }
+.btn.refuse { background: none; color: var(--fg-3); border-color: var(--rule-lit); }
+.btn.refuse:hover,
+.btn.refuse:focus-visible { background: var(--red-dim); color: var(--red); border-color: var(--red); }
 
-.btn.sm { padding: 5px 10px; font-size: 10px; }
+.btn.sm { padding: 5px 10px; font-size: 11px; }
 
 /* -------------------------------------------------------------- stamps */
 
@@ -338,7 +356,7 @@ select { appearance: none; padding-right: 30px; background-image: none; }
   border-radius: 2px;
   padding: 11px 14px;
   color: var(--fg-2);
-  font-size: 13px;
+  font-size: 13.5px;
   background: var(--ink-800);
 }
 .note-strip.bad { border-top-color: var(--red); color: var(--red); }
@@ -403,46 +421,39 @@ select { appearance: none; padding-right: 30px; background-image: none; }
 
 /* The membrane. A ruled border line with its own legend — agents sit above
    it or below it depending on where they actually executed. */
-.border-rule {
-  position: relative;
-  height: 0;
-  border-top: 1px solid var(--rule-lit);
-  border-bottom: 1px solid var(--rule-lit);
-  padding: 0;
-  margin: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--rule-lit) 0 8px,
-    transparent 8px 16px
-  );
-  background-size: 100% 1px;
-  background-repeat: repeat-x;
-  background-position: 0 1px;
-  height: 3px;
-}
-.border-legend {
+.border-band {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 16px;
-  background: var(--ink-800);
-  border-top: 1px solid var(--rule-lit);
-  border-bottom: 1px solid var(--rule-lit);
+  gap: 12px;
+  padding: 0 16px;
+  height: 44px;
   color: var(--red);
+  border-top: 3px double var(--red-dim);
+  border-bottom: 3px double var(--red-dim);
+  background:
+    repeating-linear-gradient(-45deg,
+      var(--red-dim) 0 1px,
+      transparent 1px 9px),
+    var(--ink-900);
 }
-.border-legend svg { flex: none; }
-.border-legend .txt {
+.border-band > * {
+  background: var(--ink-900);
+  padding: 3px 8px;
+  box-shadow: 0 0 0 6px var(--ink-900);
+}
+.border-band svg { flex: none; }
+.border-band .txt {
   font-family: var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.16em;
   font-size: 11px;
   font-weight: 700;
 }
-.border-legend .sub {
+.border-band .sub {
   font-family: var(--sans);
   text-transform: none;
   letter-spacing: 0;
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--fg-3);
   margin-left: auto;
 }
@@ -454,7 +465,12 @@ select { appearance: none; padding-right: 30px; background-image: none; }
   background: var(--rule);
   border-bottom: 1px solid var(--rule);
 }
-.bay:empty { display: none; }
+.bay:empty {
+  min-height: 68px;
+  background:
+    repeating-linear-gradient(-45deg, var(--rule) 0 1px, transparent 1px 14px),
+    var(--ink-850);
+}
 .bay.exterior .strip { background: var(--ink-800); }
 
 /* One agent = one inspection strip. */
@@ -480,7 +496,7 @@ select { appearance: none; padding-right: 30px; background-image: none; }
   max-width: 60ch;
 }
 .strip .out {
-  font-size: 13px;
+  font-size: 13.5px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   max-height: 190px;
@@ -536,7 +552,7 @@ select { appearance: none; padding-right: 30px; background-image: none; }
 }
 .slip-body { padding: 14px 16px 4px; }
 
-.slip table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.slip table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .slip th {
   text-align: left;
   color: #6b5f52;
@@ -551,7 +567,7 @@ select { appearance: none; padding-right: 30px; background-image: none; }
   vertical-align: baseline;
 }
 .slip tr:last-child td { border-bottom: none; }
-.slip .route { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+.slip .route { font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
 .slip .qty { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .slip .decl {
@@ -603,7 +619,7 @@ select { appearance: none; padding-right: 30px; background-image: none; }
   flex-wrap: wrap;
 }
 .entry:last-child { border-bottom: none; }
-.entry .id { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
+.entry .id { font-family: var(--mono); font-size: 13.5px; overflow-wrap: anywhere; }
 .entry .sub { font-size: 12.5px; color: var(--fg-3); }
 .entry .desc { flex-basis: 100%; font-size: 12.5px; color: var(--fg-3); max-width: 72ch; }
 
@@ -643,8 +659,8 @@ select { appearance: none; padding-right: 30px; background-image: none; }
   color: var(--fg-3);
   background: none;
 }
-.chip:hover { color: var(--fg); border-color: var(--stock); }
-.chip[aria-pressed="true"] { color: var(--ink-900); background: var(--stock); border-color: var(--stock); }
+.chip:hover { color: var(--fg); border-color: var(--gold); }
+.chip[aria-pressed="true"] { color: var(--gold); background: var(--gold-dim); border-color: var(--gold); }
 
 .chan:empty { display: none; }
 .chan {
@@ -693,7 +709,7 @@ dialog::backdrop { background: rgba(8, 5, 5, 0.72); }
 
 .check { display: flex; align-items: flex-start; gap: 10px; }
 .check input { margin-top: 3px; flex: none; accent-color: var(--green); }
-.check .txt { font-size: 13px; color: var(--fg-2); max-width: 64ch; }
+.check .txt { font-size: 13.5px; color: var(--fg-2); max-width: 64ch; }
 .check .txt strong { color: var(--fg); }
 
 /* ------------------------------------------------------------ responsive */

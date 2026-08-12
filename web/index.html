@@ -48,7 +48,7 @@ verdict, and DESIGN.md
     </picture>
     Orchestra
   </span>
-  <span class="posting" id="posting">no controlling agent assigned</span>
+  <span class="posting" id="posting"><span class="model" id="postingModel">no controlling agent</span></span>
   <nav class="desk-nav" aria-label="Sections">
     <button data-desk="run" aria-current="page">Desk</button>
     <button data-desk="agents">Agents</button>
@@ -88,13 +88,9 @@ verdict, and DESIGN.md
         <p class="prose" id="rosterLabel" style="margin-bottom:9px"></p>
         <div class="row" id="roster"></div>
       </div>
-    </div>
-  </div>
 
-  <div id="alert"></div>
+      <div id="alert"></div>
 
-  <div class="panel">
-    <div class="panel-body">
       <div id="transcript">
         <p class="empty">Present a request. In Auto the controlling agent decides which agents handle it, and the ones that do not depend on each other work at the same time.</p>
       </div>
@@ -153,22 +149,22 @@ verdict, and DESIGN.md
     </div>
 
     <div class="zone-label">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--green)"><use href="#i-check"/></svg>
-      <span class="field-label">Interior</span>
+      <span class="zone-display" style="color:var(--green)">Interior</span>
+      <span class="field-label">this machine</span>
       <span class="count field-label" id="interiorCount"></span>
     </div>
     <div class="bay" id="interior"></div>
 
-    <div class="border-legend">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-cross"/></svg>
+    <div class="border-band">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-cross"/></svg>
       <span class="txt">Border</span>
       <span class="sub" id="borderNote">nothing has crossed</span>
     </div>
 
     <div class="bay exterior" id="exterior"></div>
     <div class="zone-label" id="exteriorLabel">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--red)"><use href="#i-cross"/></svg>
-      <span class="field-label">Exterior</span>
+      <span class="zone-display" style="color:var(--red)">Exterior</span>
+      <span class="field-label">across the wire</span>
       <span class="count field-label" id="exteriorCount"></span>
     </div>
   </div>
@@ -373,6 +369,21 @@ verdict, and DESIGN.md
     <div class="dlg-foot">
       <button class="btn line" value="cancel">Cancel</button>
       <button class="btn" id="saveAgent" value="save">Save agent</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="confirmDlg">
+  <form method="dialog">
+    <div class="dlg-head">
+      <h3 id="confirmTitle">Turn this back?</h3>
+      <span class="spacer"></span>
+      <span class="stamp refused">refuse</span>
+    </div>
+    <div class="dlg-body"><p class="prose" id="confirmBody"></p></div>
+    <div class="dlg-foot">
+      <button class="btn line" value="cancel">Keep it</button>
+      <button class="btn refuse" id="confirmGo" value="go">Turn back</button>
     </div>
   </form>
 </dialog>

@@ -4,246 +4,361 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Orchestra</title>
+<link rel="icon" href="/static/brand/favicon.png" type="image/png">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+<!--
+THESIS: Orchestra decides what crosses a border, so the interface is a border post — not the
+near-black dashboard with a neon accent and glass cards that every agent tool ships.
+OWN-WORLD: Oxblood ink ground; security paper used once per run for the declaration slip;
+status carried by pressed rubber stamps and by which side of the border rule a strip sits on;
+tracked mono caps for form fields; a machine-readable zone for run identity.
+STORY: I can see several agents working at once, I can see which ones left my machine, and I
+am handed a stamped declaration of exactly what crossed.
+FIRST VIEWPORT: Posting bar with the big agent on the left; the request desk; below it the
+inspection hall split by a ruled border line, interior strips above, exterior below.
+FORM: Customs and border declaration. Candidate 3 of the grounded list. Seed key 46d85d25.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the
+verdict, and DESIGN.md
+-->
 
-<header>
-  <div class="brand">Orchestra<span id="bigAgentLabel">no big agent selected</span></div>
-  <nav>
-    <button data-view="chat" class="active">Chat</button>
-    <button data-view="agents">Agents</button>
-    <button data-view="models">Models</button>
-    <button data-view="settings">Settings</button>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- One 16px grid, 1.5 stroke, round caps. -->
+    <g id="i-mark"><path d="M2 5.2 8 2.2l6 3v4.2c0 2.6-2.4 4.3-6 5.4-3.6-1.1-6-2.8-6-5.4Z"/><path d="M5.4 8.1 7.3 10l3.4-3.6"/></g>
+    <g id="i-cross"><path d="M2 8h12"/><path d="M10.4 4.4 14 8l-3.6 3.6"/></g>
+    <g id="i-check"><path d="M2.8 8.4 6.2 12l7-8.4"/></g>
+    <g id="i-search"><circle cx="7.2" cy="7.2" r="4.4"/><path d="M10.6 10.6 14 14"/></g>
+    <g id="i-down"><path d="M8 2.6v8.2"/><path d="M4.6 7.6 8 11l3.4-3.4"/><path d="M2.6 13.4h10.8"/></g>
+    <g id="i-trash"><path d="M2.8 4.4h10.4"/><path d="M6.4 4.4V2.8h3.2v1.6"/><path d="M4.2 4.4 4.9 13.4h6.2l.7-9"/></g>
+    <g id="i-plus"><path d="M8 3v10"/><path d="M3 8h10"/></g>
+    <g id="i-star"><path d="M8 2.4 9.8 6l4 .6-2.9 2.8.7 4L8 11.5 4.4 13.4l.7-4L2.2 6.6l4-.6Z"/></g>
+    <g id="i-chev"><path d="M4 6.4 8 10.4l4-4"/></g>
+    <g id="i-stop"><rect x="4" y="4" width="8" height="8" rx="1"/></g>
+    <g id="i-send"><path d="M2.6 8h9.6"/><path d="M8.6 4.4 12.2 8l-3.6 3.6"/></g>
+  </defs>
+</svg>
+
+<header class="post-head">
+  <span class="mark">
+    <picture>
+      <source srcset="/static/brand/orchestra-mark.webp" type="image/webp">
+      <img src="/static/brand/orchestra-mark.png" alt="" width="30" height="30" decoding="async">
+    </picture>
+    Orchestra
+  </span>
+  <span class="posting" id="posting">no controlling agent assigned</span>
+  <nav class="desk-nav" aria-label="Sections">
+    <button data-desk="run" aria-current="page">Desk</button>
+    <button data-desk="agents">Agents</button>
+    <button data-desk="models">Models</button>
+    <button data-desk="settings">Settings</button>
   </nav>
 </header>
 
 <main>
 
-  <!-- ================= CHAT ================= -->
-  <section class="view" id="view-chat">
-    <div class="card">
+<!-- ══════════════════════════ THE DESK ══════════════════════════ -->
+<section class="desk" id="desk-run">
+
+  <div class="panel">
+    <div class="panel-body">
       <div class="row">
-        <label class="field grow" style="margin:0">
-          <span>Big agent — plans the work and writes the final answer</span>
-          <select id="bigAgentModel"></select>
+        <label class="field grow">
+          <span class="field-label">Controlling agent / plans the work, writes the finding</span>
+          <span class="select-wrap">
+            <select id="chief"></select>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chev"/></svg>
+          </span>
         </label>
-        <label class="field" style="margin:0;min-width:190px">
-          <span>Mode</span>
-          <select id="mode">
-            <option value="auto">Auto — it plans and delegates</option>
-            <option value="manual">Pipeline — my fixed order</option>
-            <option value="direct">Direct — just this model</option>
-          </select>
+        <label class="field" style="min-width:210px">
+          <span class="field-label">Procedure</span>
+          <span class="select-wrap">
+            <select id="mode">
+              <option value="auto">Auto: it plans and delegates</option>
+              <option value="manual">Fixed route: my order</option>
+              <option value="direct">Direct: one model, no delegation</option>
+            </select>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chev"/></svg>
+          </span>
         </label>
       </div>
-      <div id="agentPicker" hidden style="margin-top:12px">
-        <span class="detail" id="agentPickerLabel"></span>
-        <div class="row" id="agentPickerList" style="margin-top:8px"></div>
+      <div id="rosterWrap" hidden>
+        <span class="field-label" id="rosterLabel" style="display:block;color:var(--fg-3);margin-bottom:8px"></span>
+        <div class="row" id="roster"></div>
       </div>
     </div>
+  </div>
 
-    <div id="runNotice"></div>
+  <div id="alert"></div>
 
-    <div class="card privacy" id="privacyPanel" hidden>
-      <div class="card-head">
-        <span class="shield" id="privacyIcon">⬤</span>
-        <h3 id="privacyHeadline">Data flow</h3>
-        <span class="spacer"></span>
-        <button class="btn small ghost" id="toggleRestore" hidden>Show what was sent</button>
+  <div class="panel">
+    <div class="panel-body">
+      <div id="transcript">
+        <p class="empty">Present a request. In Auto the controlling agent decides which agents handle it, and the ones that do not depend on each other work at the same time.</p>
       </div>
-      <div id="privacyBody"></div>
-    </div>
-
-    <!-- The answer leads; the per-agent detail sits underneath it. Having the
-         sub-agent cards first meant scrolling past a wall of intermediate
-         output to reach the thing you actually asked for. -->
-    <div class="card">
-      <div id="transcript"><p class="empty">Ask for something. In Auto mode the big agent decides which sub-agents to run, and independent ones run at the same time.</p></div>
-      <div class="composer">
-        <textarea id="prompt" class="grow" placeholder="What do you want done?" rows="2"></textarea>
-        <button class="btn" id="send">Send</button>
-        <button class="btn ghost" id="stop" hidden>Stop</button>
+      <div class="compose">
+        <textarea id="request" class="grow" rows="2" placeholder="What needs doing?" aria-label="Your request"></textarea>
+        <button class="btn" id="send">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-send"/></svg>
+          Present
+        </button>
+        <button class="btn line" id="halt" hidden>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-stop"/></svg>
+          Halt
+        </button>
       </div>
     </div>
+  </div>
 
-    <div class="card" id="runPanel" hidden>
-      <div class="card-head">
-        <button class="btn small ghost" id="toggleNodes">Hide</button>
-        <h3>Sub-agents</h3>
-        <span class="spacer"></span>
-        <span class="lane-summary" id="laneSummary"></span>
-      </div>
-      <div class="nodes" id="nodes"></div>
+  <!-- The declaration. Security paper, once per run. -->
+  <div class="slip" id="slip" hidden>
+    <div class="slip-head">
+      <span>Declaration</span>
+      <span class="verdict" id="verdict"></span>
     </div>
-  </section>
-
-  <!-- ================= AGENTS ================= -->
-  <section class="view" id="view-agents" hidden>
-    <h2>Sub-agents</h2>
-    <p class="lede">Each agent is a <strong>model</strong>, a <strong>soul</strong>, and a <strong>role</strong>. Any agent can sit on any provider — local or API — and they run simultaneously.</p>
-    <div id="agentsNotice"></div>
-    <div class="card">
-      <div class="card-head">
-        <h3>Your agents</h3>
-        <span class="spacer"></span>
-        <button class="btn small" id="newAgent">New agent</button>
-      </div>
-      <div id="agentList"></div>
+    <div class="slip-body">
+      <table>
+        <thead>
+          <tr><th scope="col">Route</th><th scope="col">Channel</th><th scope="col">Carried</th></tr>
+        </thead>
+        <tbody id="slipRows"></tbody>
+      </table>
     </div>
-  </section>
+    <div class="slip-foot">
+      <p class="slip-note" id="slipNote"></p>
+      <p class="mrz" id="mrz"></p>
+    </div>
+  </div>
 
-  <!-- ================= MODELS ================= -->
-  <section class="view" id="view-models" hidden>
+  <!-- The inspection hall. Interior above the line, exterior below it. -->
+  <div class="panel hall" id="hall" hidden>
+    <div class="panel-head">
+      <h3>Inspection hall</h3>
+      <span class="spacer"></span>
+      <span class="chan" id="hallCount"></span>
+    </div>
+
+    <div class="zone-label">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--green)"><use href="#i-check"/></svg>
+      <span class="field-label">Interior / this machine</span>
+      <span class="count field-label" id="interiorCount"></span>
+    </div>
+    <div class="bay" id="interior"></div>
+
+    <div class="border-legend">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-cross"/></svg>
+      <span class="txt">Border</span>
+      <span class="sub" id="borderNote">nothing has crossed</span>
+    </div>
+
+    <div class="bay exterior" id="exterior"></div>
+    <div class="zone-label" id="exteriorLabel" hidden>
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--red)"><use href="#i-cross"/></svg>
+      <span class="field-label">Exterior / across the wire</span>
+      <span class="count field-label" id="exteriorCount"></span>
+    </div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════ AGENTS ══════════════════════════ -->
+<section class="desk" id="desk-agents" hidden>
+  <div class="desk-title">
+    <h2>Agents</h2>
+    <p class="prose">Every agent is a <strong>model</strong>, a <strong>soul</strong> and a <strong>role</strong>. Any agent may sit on any provider, local or hosted, and agents that do not depend on each other work simultaneously.</p>
+  </div>
+  <div id="agentAlert"></div>
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Roster</h3>
+      <span class="spacer"></span>
+      <button class="btn sm" id="newAgent">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-plus"/></svg>
+        New agent
+      </button>
+    </div>
+    <div class="panel-body"><div id="agentList"></div></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ MODELS ══════════════════════════ -->
+<section class="desk" id="desk-models" hidden>
+  <div class="desk-title">
     <h2>Models</h2>
-    <p class="lede">Local models live on your disk and can be downloaded or removed here. Cloud models are hosted — you select them, there is nothing to download.</p>
-    <div class="tabs">
-      <button data-tab="installed" class="active">Installed</button>
-      <button data-tab="browse">Download</button>
-      <button data-tab="cloud">Cloud</button>
-    </div>
+    <p class="prose">Local models occupy your disk and can be pulled or removed here. Hosted models are selected, never downloaded. That distinction is the whole point, so this interface keeps them apart.</p>
+  </div>
 
-    <div id="tab-installed">
-      <div id="installedNotice"></div>
-      <div class="card"><div id="installedList"></div></div>
-    </div>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="installed">On disk</button>
+    <button role="tab" aria-selected="false" data-tab="pull">Pull</button>
+    <button role="tab" aria-selected="false" data-tab="router">OpenRouter</button>
+    <button role="tab" aria-selected="false" data-tab="hosted">Hosted</button>
+  </div>
 
-    <div id="tab-browse" hidden>
-      <div class="card">
-        <h3>Pull any model by name</h3>
-        <p class="detail" style="margin:0 0 12px">
-          An Ollama library name like <code>qwen2.5:7b</code>, or a Hugging Face GGUF
-          reference like <code>hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M</code>.
-        </p>
+  <div id="tab-installed">
+    <div id="installedAlert"></div>
+    <div class="panel"><div class="panel-body"><div id="installedList"></div></div></div>
+  </div>
+
+  <div id="tab-pull" hidden>
+    <div class="panel">
+      <div class="panel-head"><h3>Pull a model onto this machine</h3></div>
+      <div class="panel-body">
+        <p class="prose">An Ollama library name such as <code>qwen2.5:7b</code>, or a Hugging Face GGUF reference such as <code>hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M</code>.</p>
         <div class="row">
-          <input type="text" id="pullName" class="grow" placeholder="model name or hf.co/user/repo:quant">
-          <button class="btn" id="pullBtn">Download</button>
+          <input type="text" id="pullName" class="grow" placeholder="model name, or hf.co/user/repo:quant" aria-label="Model to pull">
+          <button class="btn" id="pullGo">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-down"/></svg>
+            Pull
+          </button>
         </div>
-        <div id="pullStatus"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h3>Suggested</h3></div>
-        <p class="detail" style="margin:-4px 0 12px">
-          Ollama has no public search API, so this is a hand-picked starting list rather
-          than a live index. Anything not here still works in the box above.
-        </p>
-        <div id="catalogList"></div>
+        <div id="pullState"></div>
       </div>
     </div>
-
-    <div id="tab-cloud" hidden>
-      <div class="card"><div id="cloudList"></div></div>
+    <div class="panel">
+      <div class="panel-head"><h3>Suggested</h3></div>
+      <div class="panel-body">
+        <p class="prose">Ollama publishes no search API, so this is a hand-picked starting list rather than a live index. Anything absent still pulls by name above.</p>
+        <div id="suggested"></div>
+      </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ================= SETTINGS ================= -->
-  <section class="view" id="view-settings" hidden>
-    <h2>Providers</h2>
-    <p class="lede">Connect whichever you use. Keys are stored on this machine only, in <code id="homePath">~/.orchestra</code>, readable by you alone — never in the repo.</p>
-    <div id="providerCards"></div>
+  <div id="tab-router" hidden>
+    <div class="panel">
+      <div class="panel-head"><h3>OpenRouter</h3><span class="spacer"></span><span class="chan" id="routerCount"></span></div>
+      <div class="panel-body">
+        <p class="prose">One key, several hundred hosted models. Star the ones you want and they appear in every model picker; a dropdown of four hundred slugs helps nobody. An id the catalogue has not caught up with can be starred by hand.</p>
+        <div class="row">
+          <input type="search" id="routerQ" class="grow" placeholder="Search by name, vendor or description" aria-label="Search OpenRouter models">
+          <button class="chip" id="fFree" aria-pressed="false">Free only</button>
+          <button class="chip" id="fVision" aria-pressed="false">Vision</button>
+        </div>
+        <div class="row">
+          <input type="text" id="routerAdd" class="grow" placeholder="Star an id by hand, e.g. some-lab/model-released-today" aria-label="Star a model id by hand">
+          <button class="btn line sm" id="routerAddGo">Star id</button>
+        </div>
+        <div id="routerAlert"></div>
+        <div id="routerList"></div>
+      </div>
+    </div>
+  </div>
 
-    <div class="card">
-      <div class="card-head"><h3>Privacy</h3></div>
-      <p class="detail" style="margin:-4px 0 14px">
-        What may leave this machine. Enforced at the provider boundary — every model call
-        goes through the same guard, so this applies to the big agent, sub-agents, and
-        anything added later.
-      </p>
+  <div id="tab-hosted" hidden>
+    <div class="panel"><div class="panel-body"><div id="hostedList"></div></div></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ SETTINGS ══════════════════════════ -->
+<section class="desk" id="desk-settings" hidden>
+  <div class="desk-title">
+    <h2>Settings</h2>
+    <p class="prose">Credentials are held on this machine alone, in <code id="homePath">~/.orchestra</code>, readable only by you. They are never written into the repository and the page makes no third-party request.</p>
+  </div>
+
+  <div id="providerCards"></div>
+
+  <div class="panel">
+    <div class="panel-head"><h3>Border policy</h3></div>
+    <div class="panel-body">
+      <p class="prose">What may leave this machine. Enforced at the provider boundary, where every model call passes the same checkpoint. It governs the controlling agent, every sub-agent, and anything added later.</p>
 
       <label class="field">
-        <span>When sensitive values appear in text bound for a hosted model</span>
-        <select id="privacyMode">
-          <option value="redact">Redact — replace them with placeholders, then send</option>
-          <option value="strict">Strict — refuse, and move that step to a local model</option>
-          <option value="off">Off — send everything as-is</option>
-        </select>
-        <span class="hint" id="privacyModeHint"></span>
+        <span class="field-label">When declarable values appear in text bound for a hosted model</span>
+        <span class="select-wrap">
+          <select id="policyMode">
+            <option value="redact">Redact: substitute placeholders, then send</option>
+            <option value="strict">Refuse: turn it back, move that step to a local model</option>
+            <option value="off">Open border: send everything as written</option>
+          </select>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chev"/></svg>
+        </span>
+        <span class="note" id="policyNote"></span>
       </label>
 
-      <span class="detail" style="display:block;margin-bottom:8px">What counts as sensitive</span>
-      <div class="row" id="privacyCategories" style="margin-bottom:12px"></div>
+      <div>
+        <span class="field-label" style="display:block;color:var(--fg-3);margin-bottom:8px">Declarable items</span>
+        <div class="row" id="policyItems"></div>
+      </div>
 
-      <p class="notice" style="margin-bottom:14px">
-        Detection is pattern-based. It reliably catches structured identifiers — emails, phone
-        numbers, card numbers, API keys, IP addresses, file paths containing your username. It
-        does <strong>not</strong> catch names, street addresses, dates of birth, or the fact that
-        a paragraph is about someone's health. For those, mark the agent
-        <strong>local only</strong> so its model can never change.
-      </p>
+      <div class="note-strip warn">
+        Detection is pattern-based. It reliably catches structured identifiers: addresses, numbers,
+        keys, paths. It does <strong>not</strong> catch names, street addresses, dates of birth, or the fact
+        that a passage concerns someone's health. For those, mark the agent <strong>interior only</strong> so
+        its model can never change.
+      </div>
 
-      <button class="btn small" id="savePrivacy">Save privacy settings</button>
+      <button class="btn" id="savePolicy">Save policy</button>
     </div>
+  </div>
 
-    <div class="card">
-      <div class="card-head"><h3>Parallelism</h3></div>
-      <p class="detail" style="margin:-4px 0 14px">
-        How many sub-agents may run at once per provider. Cloud lanes run wide because
-        they are network-bound. The local lane is small because models compete for RAM —
-        and because it is separate, a busy local lane never holds up your cloud agents.
-      </p>
-      <div class="row" id="laneLimits"></div>
-      <button class="btn small" id="saveLanes" style="margin-top:14px">Save limits</button>
+  <div class="panel">
+    <div class="panel-head"><h3>Inspection lanes</h3></div>
+    <div class="panel-body">
+      <p class="prose">How many agents may work at once per provider. Hosted lanes run wide because they wait on the network; the local lane is narrow because models compete for memory. Because it is separate, a busy local lane never holds up hosted work.</p>
+      <div class="row" id="lanes"></div>
+      <button class="btn" id="saveLanes">Save lanes</button>
     </div>
-  </section>
+  </div>
+</section>
 
 </main>
 
-<!-- agent editor -->
-<dialog id="agentDialog">
+<dialog id="agentDlg">
   <form method="dialog">
+    <div class="dlg-head"><h3 id="dlgTitle">New agent</h3></div>
     <div class="dlg-body">
-      <h3 id="agentDialogTitle">New agent</h3>
-      <div id="agentFormError"></div>
+      <div id="dlgAlert"></div>
 
       <label class="field">
-        <span>Name</span>
+        <span class="field-label">Name</span>
         <input type="text" id="fName" placeholder="Scout">
       </label>
 
       <label class="field">
-        <span>id — lowercase, no spaces. Cannot be changed later.</span>
+        <span class="field-label">Reference / lowercase, no spaces, fixed once saved</span>
         <input type="text" id="fId" placeholder="scout">
       </label>
 
       <label class="field">
-        <span>Role</span>
+        <span class="field-label">Role</span>
         <input type="text" id="fRole" placeholder="Finds and verifies current facts on a topic">
-        <span class="hint">The big agent reads this to decide what to send here. Write it for a router, not a human.</span>
+        <span class="note">The controlling agent reads this to decide what to send here. Write it for a router, not for a person.</span>
       </label>
 
       <label class="field">
-        <span>Soul</span>
-        <textarea id="fSoul" class="soul" placeholder="Who this agent is: its voice, standards, and what it refuses to do."></textarea>
-        <span class="hint">Optional, but it is what makes two agents on the same model behave like different people.</span>
+        <span class="field-label">Soul</span>
+        <textarea id="fSoul" class="tall" placeholder="Who this agent is: its voice, its standards, and what it refuses to do."></textarea>
+        <span class="note">Optional, and the reason two agents on one model behave like different people.</span>
       </label>
 
       <label class="field">
-        <span>Model — any provider, local or API</span>
-        <select id="fModel"></select>
+        <span class="field-label">Model / any provider, local or hosted</span>
+        <span class="select-wrap">
+          <select id="fModel"></select>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chev"/></svg>
+        </span>
       </label>
 
       <label class="field">
-        <span>Creativity (temperature)</span>
+        <span class="field-label">Temperature</span>
         <input type="number" id="fTemp" min="0" max="2" step="0.1" placeholder="0.4">
       </label>
 
-      <label class="checkbox">
+      <label class="check">
         <input type="checkbox" id="fResearch">
-        <span><strong>Can research the web.</strong> Off by default. Anthropic agents use Anthropic's
-        own server-side search; other providers use a read-only fetch on this machine. Fetched pages
-        are treated as untrusted data, never as instructions.</span>
+        <span class="txt"><strong>May read the web.</strong> Off by default. Anthropic agents use Anthropic's own server-side search; others use a read-only fetch from this machine. Fetched pages are handled as untrusted data, never as instructions.</span>
       </label>
 
-      <label class="checkbox">
-        <input type="checkbox" id="fLocalOnly">
-        <span><strong>Local only — never leaves this machine.</strong> This agent can only be
-        assigned a model served locally; saving it with a hosted model is rejected. It is also told
-        to hand downstream steps an abstraction rather than the raw details, so a hosted agent can
-        work on the problem without ever receiving the data.</span>
+      <label class="check">
+        <input type="checkbox" id="fLocal">
+        <span class="txt"><strong>Interior only. Never crosses the border.</strong> This agent can only hold a model served locally; saving it against a hosted model is refused. It is also told to hand later steps an abstraction rather than the raw details, so a hosted agent can work the problem without receiving the material.</span>
       </label>
     </div>
     <div class="dlg-foot">
-      <button class="btn ghost" value="cancel">Cancel</button>
+      <button class="btn line" value="cancel">Cancel</button>
       <button class="btn" id="saveAgent" value="save">Save agent</button>
     </div>
   </form>

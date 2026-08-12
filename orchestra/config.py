@@ -24,6 +24,9 @@ DEFAULTS: dict[str, Any] = {
     "providers": {
         "ollama": {"host": "http://127.0.0.1:11434"},
         "anthropic": {"api_key": None},
+        # `starred` keeps the pickers usable: OpenRouter serves 400+ models and
+        # only the ones you chose belong in a dropdown.
+        "openrouter": {"api_key": None, "starred": []},
         "openai_compat": {"base_url": None, "api_key": None, "label": "OpenAI-compatible"},
     },
     # The "big agent" that plans and synthesizes.
@@ -43,6 +46,7 @@ DEFAULTS: dict[str, Any] = {
 ENV_OVERRIDES = {
     ("ollama", "host"): "OLLAMA_HOST",
     ("anthropic", "api_key"): "ANTHROPIC_API_KEY",
+    ("openrouter", "api_key"): "OPENROUTER_API_KEY",
     ("openai_compat", "base_url"): "OPENAI_BASE_URL",
     ("openai_compat", "api_key"): "OPENAI_API_KEY",
 }

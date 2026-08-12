@@ -15,8 +15,9 @@ from .base import ModelInfo, Provider
 from .guard import guarded
 from .ollama import OllamaProvider
 from .openai_compat import OpenAICompatProvider
+from .openrouter import OpenRouterProvider
 
-PROVIDER_IDS = ("ollama", "anthropic", "openai_compat")
+PROVIDER_IDS = ("ollama", "anthropic", "openrouter", "openai_compat")
 
 
 def _raw(provider_id: str, settings: dict[str, Any]) -> Provider:
@@ -24,6 +25,11 @@ def _raw(provider_id: str, settings: dict[str, Any]) -> Provider:
         return OllamaProvider(host=settings.get("host"))
     if provider_id == "anthropic":
         return AnthropicProvider(api_key=settings.get("api_key"))
+    if provider_id == "openrouter":
+        return OpenRouterProvider(
+            api_key=settings.get("api_key"),
+            starred=settings.get("starred") or [],
+        )
     if provider_id == "openai_compat":
         return OpenAICompatProvider(
             base_url=settings.get("base_url"),

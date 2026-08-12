@@ -8,9 +8,11 @@ from typing import Any
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import StreamingResponse
 
+from .. import config
 from ..providers import build
 from ..providers.base import ProviderError
 from ..providers.ollama import OllamaProvider
+from ..providers.openrouter import OpenRouterProvider
 
 router = APIRouter(tags=["catalog"])
 
@@ -81,6 +83,57 @@ async def delete_model(name: str) -> dict[str, Any]:
     except ProviderError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"deleted": name}
+
+
+# -- OpenRouter: browse 400+ hosted models, star the ones you'll actually use --
+
+
+def _openrouter() -> OpenRouterProvider:
+    provider = build("openrouter")
+    # build() returns a guarded wrapper; __getattr__ forwards the extras.
+    return provider
+
+
+@router.get("/openrouter/models")
+async def openrouter_models(
+    q: str = "",
+    free: bool = False,
+    vision: bool = False,
+    limit: int = 60,
+) -> dict[str, Any]:
+    provider = _openrouter()
+    try:
+        result = await provider.search(
+            query=q, free_only=free, vision_only=vision, limit=max(1, min(limit, 200))
+        )
+    except ProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {**result, "configured": provider.configured()}
+
+
+@router.post("/openrouter/starred")
+async def star_model(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """Star or unstar a model id.
+
+    Accepts ids the catalog has never heard of on purpose — a model released
+    this morning should not be gated on this app's cache.
+    """
+    model_id = (payload.get("id") or "").strip()
+    if not model_id or "/" not in model_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Give a full OpenRouter model id, like anthropic/claude-opus-5.",
+        )
+
+    cfg = config.load()
+    starred = list((cfg["providers"].get("openrouter") or {}).get("starred") or [])
+    if payload.get("starred") is False or (payload.get("starred") is None and model_id in starred):
+        starred = [m for m in starred if m != model_id]
+    elif model_id not in starred:
+        starred.append(model_id)
+
+    config.update({"providers": {"openrouter": {"starred": starred}}})
+    return {"starred": starred}
 
 
 _SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}

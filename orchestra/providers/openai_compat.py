@@ -35,6 +35,16 @@ class OpenAICompatProvider:
         # strictly required.
         return bool(self.base_url)
 
+    def is_local(self) -> bool:
+        """LM Studio and vLLM on this machine count as local, and should."""
+        from urllib.parse import urlparse
+
+        from .. import privacy
+
+        if not self.base_url:
+            return False
+        return privacy.is_local_host(urlparse(self.base_url).hostname or "")
+
     def _headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
         if self.api_key:

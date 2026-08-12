@@ -18,7 +18,7 @@ import time
 from typing import Any, AsyncIterator
 
 from . import agents as agent_store
-from . import config, research
+from . import config, privacy, research
 from .planner import Plan
 from .providers import build
 from .providers.base import Chunk, Msg, ProviderError
@@ -146,6 +146,7 @@ class Run:
         cfg: dict[str, Any] | None = None,
     ) -> None:
         cfg = cfg or config.load()
+        self.cfg = cfg
         self.plan = plan
         self.agents = agents
         self.request = request
@@ -154,6 +155,8 @@ class Run:
         self.results: dict[str, dict[str, Any]] = {}
         self.events: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         self.usage = {"input_tokens": 0, "output_tokens": 0}
+        self.policy = privacy.Policy.from_config(cfg)
+        self.ledger = privacy.Ledger(self.policy)
 
     def emit(self, event: dict[str, Any]) -> None:
         self.events.put_nowait(event)
@@ -163,6 +166,43 @@ class Run:
             value = data.get(key)
             if isinstance(value, int):
                 self.usage[key] += value
+
+    async def _local_model(self) -> dict[str, str] | None:
+        """A model on this machine to reroute blocked work to.
+
+        Resolved once per run and cached, including the negative answer — a
+        strict run with no local model would otherwise re-probe on every node.
+        """
+        if hasattr(self, "_local_cache"):
+            return self._local_cache
+
+        chosen: dict[str, str] | None = None
+        configured = self.policy.local_fallback
+        if configured:
+            try:
+                if build(configured["provider"]).is_local():
+                    chosen = dict(configured)
+            except KeyError:
+                chosen = None
+
+        if chosen is None:
+            for provider_id in ("ollama", "openai_compat"):
+                try:
+                    provider = build(provider_id)
+                except KeyError:
+                    continue
+                if not provider.configured() or not provider.is_local():
+                    continue
+                try:
+                    models = await provider.list_models()
+                except Exception:  # noqa: BLE001
+                    continue
+                if models:
+                    chosen = {"provider": provider_id, "model": models[0].id}
+                    break
+
+        self._local_cache = chosen
+        return chosen
 
     async def _run_task(
         self,
@@ -214,18 +254,42 @@ class Run:
                 }
             )
 
-            parts: list[str] = []
-            try:
-                context = build_context(task, self.results)
-                async for chunk in run_agent(agent, task["instruction"], context):
+            context = build_context(task, self.results)
+
+            async def stream(runner_agent: dict[str, Any]) -> str:
+                collected: list[str] = []
+                async for chunk in run_agent(runner_agent, task["instruction"], context):
                     if chunk.type == "text":
-                        parts.append(chunk.text)
+                        collected.append(chunk.text)
                         self.emit({"type": "node_token", "id": task_id, "text": chunk.text})
                     elif chunk.type == "usage":
                         self._add_usage(chunk.data)
                     elif chunk.type == "tool":
                         self.emit({"type": "node_tool", "id": task_id, **chunk.data})
-            except (ProviderError, Exception) as exc:  # noqa: BLE001
+                return "".join(collected)
+
+            try:
+                try:
+                    output = await stream(agent)
+                except privacy.BlockedEgress as blocked:
+                    # Strict mode refused to send this to a hosted model. Moving
+                    # the step onto a local model is far better than failing the
+                    # run — the work still happens, it just happens here.
+                    local = await self._local_model()
+                    if not local:
+                        raise
+                    rerouted = {**agent, "model": local}
+                    self.emit(
+                        {
+                            "type": "node_rerouted",
+                            "id": task_id,
+                            "from": agent["model"]["model"],
+                            "to": local["model"],
+                            "categories": blocked.categories,
+                        }
+                    )
+                    output = await stream(rerouted)
+            except Exception as exc:  # noqa: BLE001
                 message = str(exc) or exc.__class__.__name__
                 self.results[task_id] = {"error": message, "agent_name": agent.get("name")}
                 self.emit(
@@ -239,6 +303,8 @@ class Run:
                 )
                 done[task_id].set()
                 return
+
+            parts = [output]
 
             output = "".join(parts).strip()
             self.results[task_id] = {"output": output, "agent_name": agent.get("name")}
@@ -289,6 +355,10 @@ class Run:
                 self._add_usage(chunk.data)
 
     async def execute(self) -> None:
+        # Bound here, before any task is created: asyncio copies the context
+        # into each new task, so every sub-agent call — present and future —
+        # writes to this run's ledger without being handed it explicitly.
+        token = privacy.use_ledger(self.ledger)
         try:
             self.emit({"type": "plan", "plan": self.plan.as_dict()})
 
@@ -307,12 +377,24 @@ class Run:
             else:
                 await self._synthesize()
 
-            self.emit({"type": "done", "usage": self.usage})
+            # The receipt: what left this machine, what stayed, what was
+            # protected on the way out. `mapping` lets the client put the real
+            # values back into the answer locally — they are the user's own
+            # data and never left in that form.
+            self.emit(
+                {
+                    "type": "done",
+                    "usage": self.usage,
+                    "privacy": self.ledger.summary(),
+                    "restore": self.ledger.mapping,
+                }
+            )
         except ProviderError as exc:
             self.emit({"type": "error", "message": str(exc)})
         except Exception as exc:  # noqa: BLE001
             self.emit({"type": "error", "message": f"Run failed: {exc}"})
         finally:
+            privacy.reset_ledger(token)
             self.events.put_nowait(None)
 
     async def stream(self) -> AsyncIterator[dict[str, Any]]:

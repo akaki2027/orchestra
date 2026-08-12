@@ -306,5 +306,55 @@ dialog .dlg-foot {
 .checkbox input { margin-top: 3px; }
 .checkbox span { font-size: 13.5px; color: var(--muted); }
 
+/* ---- privacy receipt ---- */
+
+.card.privacy { border-left: 3px solid var(--ok); }
+.card.privacy.leaked { border-left-color: var(--warn); }
+.card.privacy.off { border-left-color: var(--muted); }
+
+.shield { color: var(--ok); font-size: 11px; line-height: 1; }
+.card.privacy.leaked .shield { color: var(--warn); }
+.card.privacy.off .shield { color: var(--muted); }
+
+.flow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.flow .leg {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+}
+.flow .leg.local { border-color: var(--ok); color: var(--ok); }
+.flow .leg.remote { border-color: var(--warn); color: var(--warn); }
+.flow .leg.blocked { border-color: var(--err); color: var(--err); }
+.flow .leg .n { font-weight: 650; }
+
+.egress-list { font-size: 13px; }
+.egress-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.egress-row .where { font-family: var(--mono); font-size: 12.5px; }
+.egress-row .tag { font-size: 11.5px; color: var(--muted); }
+
+.chip {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.chip.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+.restored { border-bottom: 1px dotted var(--ok); }
+
 .footer-note { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
 code { font-family: var(--mono); font-size: 0.92em; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }

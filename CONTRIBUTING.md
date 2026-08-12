@@ -18,15 +18,26 @@ To work against a scratch config instead of your real one:
 ORCHESTRA_HOME=/tmp/orchestra-dev ./run.sh --port 8601
 ```
 
-## The one architectural rule
+## Two architectural rules
 
-**Nothing outside `orchestra/providers/` may know which backend is behind a model slot.**
+**1. Nothing outside `orchestra/providers/` may know which backend is behind a model slot.**
 
 A slot is `{"provider": "...", "model": "..."}`. The planner, runner, agents, and UI all go through
 the `Provider` protocol in `providers/base.py`. That constraint is what makes every model swappable
 at runtime, and it is easy to break by accident — if you find yourself writing
 `if provider_id == "anthropic"` outside `providers/`, the behaviour probably belongs on `Caps`
 instead.
+
+**2. `registry.build()` is the only way to get a provider, and it always wraps in the guard.**
+
+The privacy guarantee in the README is only true because there is exactly one door. Do not add a
+path that returns `_raw(...)` un-wrapped, do not construct `OllamaProvider()` directly in
+application code, and do not add a "just this once" bypass for a fast path. If the guard is in your
+way, the right fix is a policy change in `privacy.py`, not a second door.
+
+A new provider must implement `is_local()` honestly. It is a method rather than a flag because the
+answer depends on configuration — a remote Ollama is not local. Getting this backwards silently
+breaks the guarantee, which is the one bug in this codebase that would matter.
 
 ## Adding a provider
 
@@ -60,6 +71,11 @@ README's design claims, and they should be re-run when you touch the relevant co
 - **SSRF guard** — `research.safe_url` must block loopback, private ranges, link-local, cloud
   metadata, and non-HTTP schemes.
 - **Model swap** — change an agent's model and confirm the next run uses it with no restart.
+- **The privacy guarantee** — the important one. Substitute a spy provider that records exactly
+  what it was handed, then assert: a remote backend never receives a raw email, phone, or card
+  number under `redact`; strict mode raises before the remote backend is called at all; clean text
+  passes through byte-for-byte; a remote Ollama reports `is_local() == False`; and the ledger counts
+  local calls as well as remote ones (the ratio is the claim).
 
 ## Style
 

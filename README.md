@@ -1,11 +1,15 @@
 # Orchestra
 
-Root a strong agent, and let it hand work to a team of smaller ones that run **at the same time**.
+**Local-first agent orchestration that shows you exactly what left your machine.**
 
-Orchestra is a local web portal. You pick a **big agent** to plan and write the final answer, you
-define **sub-agents** — each with its own model, its own soul, and its own job — and the big agent
-breaks your request into subtasks and fans them out. Independent subtasks run simultaneously, mixing
-local models and hosted APIs in the same run.
+A big agent plans your request into subtasks and hands them to smaller agents that run **at the same
+time** — some on models on your laptop, some on hosted APIs, in the same run. Because those are
+different trust boundaries, Orchestra treats them as different trust boundaries: sensitive values
+are stripped before anything reaches a hosted model, agents can be pinned to never leave the
+machine at all, and every run ends with a receipt showing what stayed and what was sent.
+
+Most agent tools ask you to choose between capable-but-hosted and private-but-limited. This one
+routes per subtask, so you get both.
 
 Every model slot is swappable at any time, from a dropdown, with no restart. Local models can be
 downloaded, inspected, and deleted from inside the app.
@@ -106,6 +110,57 @@ full"* rather than just looking slow. All three limits are editable in Settings.
 This is measurable, not decorative. A recorded 11-task local run finished in 43.3s of wall time
 against 78.2s of summed node time, with 9 overlapping node pairs.
 
+## Privacy-tiered routing
+
+This is the part worth caring about. It has three layers.
+
+**1. Redaction at the boundary.** Before any text reaches a hosted model, structured identifiers are
+replaced with stable placeholders. The same value always gets the same placeholder within a run, so
+the model can still tell that two mentions are the same person:
+
+```
+you type:      Priya Raman, priya.raman@example.com, card 4111 1111 1111 1111 was double charged
+local model:   Priya Raman, priya.raman@example.com, card 4111 1111 1111 1111 was double charged
+hosted model:  Priya Raman, [EMAIL_1], card [CARD_1] was double charged
+your answer:   …the real values restored here, locally, because they never left in that form
+```
+
+Detected by default: emails, phone numbers, Luhn-validated card numbers, US SSNs, API keys and
+tokens (`sk-`, `sk-ant-`, `ghp_`, `AKIA…`, `xox…`, and friends), IP addresses, IBANs, and file paths
+containing your home directory. Each is toggleable.
+
+**2. Local-only agents.** Tick "local only" on an agent and it can no longer be saved with a hosted
+model — the API rejects it, not just the UI. Such an agent is also *told* it may be feeding a hosted
+agent downstream, and instructed to hand over an abstraction rather than the raw details. That is
+the pattern that makes hybrid work: the local model reads the private material and the hosted model
+gets the problem without the data.
+
+**3. Strict mode.** Instead of redacting, refuse. A step whose input contains sensitive values is
+automatically moved onto a local model, with a visible notice saying which categories forced the
+move. If you have no local model installed, the step fails rather than sending.
+
+### How the guarantee is enforced
+
+Not by remembering to call a function. `providers/registry.build()` is the only way to obtain a
+model, and everything it returns is wrapped in `providers/guard.py`. Call sites cannot opt in and
+cannot opt out; code added later is covered without its author knowing this exists. If you're
+auditing the claim, those two files are the whole story.
+
+"Local" is decided per configured instance, not per provider name — an Ollama pointed at another
+machine is **not** local, and an LM Studio endpoint on `localhost` **is**. Addresses that fail to
+resolve are treated as remote. Note that a private LAN address counts as local; if you're on a
+shared network and that isn't what you want, use strict mode with a loopback-only endpoint.
+
+### What it does not do
+
+Detection is pattern-based, and that is a deliberate trade: a classifier that is right most of the
+time cannot back a guarantee, and cannot be audited by reading the source. So it reliably catches
+structured identifiers and **does not** catch names, street addresses, dates of birth, or the fact
+that a paragraph is about someone's health or finances. For those, mark the agent local-only — that
+protection is structural rather than statistical.
+
+The ledger records what Orchestra sent. It cannot tell you what a provider does with it afterwards.
+
 ## Research
 
 Any agent can be given read-only web access. It is **off by default, per agent**, and works two
@@ -159,8 +214,12 @@ orchestra/
   agents.py        agent CRUD; composes soul + role into a system prompt
   planner.py       big agent -> task DAG, with fallbacks
   runner.py        parallel executor, per-provider lanes, event stream
+  privacy.py       detectors, redaction, policy, and the per-run ledger
   research.py      keyless search + fetch, SSRF guard, untrusted wrapping
-  providers/       base.py is the swap seam; one file per backend
+  providers/
+    base.py        the swap seam
+    guard.py       the egress choke point — read this to audit the claim
+    registry.py    the only source of providers, and where the guard is applied
   routes/          the JSON + SSE API
 web/               the UI — plain HTML, CSS, and JS. No bundler.
 agents/            starter sub-agents

@@ -96,6 +96,16 @@ class Provider(Protocol):
         """False when the user hasn't supplied what this provider needs yet."""
         ...
 
+    def is_local(self) -> bool:
+        """True only when inference happens on this machine or LAN.
+
+        Deliberately a method, not a static flag: an Ollama pointed at a remote
+        host is NOT local, and an OpenAI-compatible endpoint on localhost (LM
+        Studio, vLLM) IS. Getting this backwards would silently break the
+        privacy guarantee, so it is decided per configured instance.
+        """
+        ...
+
     async def status(self) -> Status:
         """Cheap reachability probe for the setup screen."""
         ...

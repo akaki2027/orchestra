@@ -45,6 +45,16 @@
 
     <div id="runNotice"></div>
 
+    <div class="card privacy" id="privacyPanel" hidden>
+      <div class="card-head">
+        <span class="shield" id="privacyIcon">⬤</span>
+        <h3 id="privacyHeadline">Data flow</h3>
+        <span class="spacer"></span>
+        <button class="btn small ghost" id="toggleRestore" hidden>Show what was sent</button>
+      </div>
+      <div id="privacyBody"></div>
+    </div>
+
     <!-- The answer leads; the per-agent detail sits underneath it. Having the
          sub-agent cards first meant scrolling past a wall of intermediate
          output to reach the thing you actually asked for. -->
@@ -133,6 +143,38 @@
     <div id="providerCards"></div>
 
     <div class="card">
+      <div class="card-head"><h3>Privacy</h3></div>
+      <p class="detail" style="margin:-4px 0 14px">
+        What may leave this machine. Enforced at the provider boundary — every model call
+        goes through the same guard, so this applies to the big agent, sub-agents, and
+        anything added later.
+      </p>
+
+      <label class="field">
+        <span>When sensitive values appear in text bound for a hosted model</span>
+        <select id="privacyMode">
+          <option value="redact">Redact — replace them with placeholders, then send</option>
+          <option value="strict">Strict — refuse, and move that step to a local model</option>
+          <option value="off">Off — send everything as-is</option>
+        </select>
+        <span class="hint" id="privacyModeHint"></span>
+      </label>
+
+      <span class="detail" style="display:block;margin-bottom:8px">What counts as sensitive</span>
+      <div class="row" id="privacyCategories" style="margin-bottom:12px"></div>
+
+      <p class="notice" style="margin-bottom:14px">
+        Detection is pattern-based. It reliably catches structured identifiers — emails, phone
+        numbers, card numbers, API keys, IP addresses, file paths containing your username. It
+        does <strong>not</strong> catch names, street addresses, dates of birth, or the fact that
+        a paragraph is about someone's health. For those, mark the agent
+        <strong>local only</strong> so its model can never change.
+      </p>
+
+      <button class="btn small" id="savePrivacy">Save privacy settings</button>
+    </div>
+
+    <div class="card">
       <div class="card-head"><h3>Parallelism</h3></div>
       <p class="detail" style="margin:-4px 0 14px">
         How many sub-agents may run at once per provider. Cloud lanes run wide because
@@ -190,6 +232,14 @@
         <span><strong>Can research the web.</strong> Off by default. Anthropic agents use Anthropic's
         own server-side search; other providers use a read-only fetch on this machine. Fetched pages
         are treated as untrusted data, never as instructions.</span>
+      </label>
+
+      <label class="checkbox">
+        <input type="checkbox" id="fLocalOnly">
+        <span><strong>Local only — never leaves this machine.</strong> This agent can only be
+        assigned a model served locally; saving it with a hosted model is rejected. It is also told
+        to hand downstream steps an abstraction rather than the raw details, so a hosted agent can
+        work on the problem without ever receiving the data.</span>
       </label>
     </div>
     <div class="dlg-foot">

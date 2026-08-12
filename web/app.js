@@ -307,6 +307,199 @@ async function saveProvider(id) {
   await refreshModels();
 }
 
+/* ---------------------------------------------------------------- privacy */
+
+const CATEGORY_LABELS = {
+  email: "Emails",
+  phone: "Phone numbers",
+  card: "Card numbers",
+  ssn: "Social Security numbers",
+  secret: "API keys & tokens",
+  ip: "IP addresses",
+  path: "Home file paths",
+  iban: "Bank accounts",
+};
+
+const MODE_HINTS = {
+  redact:
+    "Sensitive values are swapped for placeholders like [EMAIL_1] before the text leaves. " +
+    "Local models still see the real values, and the real values are put back into the answer here.",
+  strict:
+    "Nothing sensitive is sent to a hosted model at all. Affected steps are moved to a local " +
+    "model automatically; if you have none installed, the step fails rather than sending.",
+  off: "No inspection and no redaction. Everything is sent to whichever model an agent is assigned.",
+};
+
+let selectedCategories = new Set();
+
+function renderPrivacySettings() {
+  const privacy = state.config.privacy || {};
+  const mode = privacy.mode || "redact";
+  $("#privacyMode").value = mode;
+  $("#privacyModeHint").textContent = MODE_HINTS[mode] || "";
+
+  selectedCategories = new Set(
+    Array.isArray(privacy.categories) && privacy.categories.length
+      ? privacy.categories
+      : Object.keys(CATEGORY_LABELS)
+  );
+
+  const host = $("#privacyCategories");
+  host.innerHTML = "";
+  for (const [key, label] of Object.entries(CATEGORY_LABELS)) {
+    const chip = el("span", {
+      class: `chip ${selectedCategories.has(key) ? "on" : ""}`,
+      text: label,
+      onclick: () => {
+        if (selectedCategories.has(key)) selectedCategories.delete(key);
+        else selectedCategories.add(key);
+        chip.classList.toggle("on");
+      },
+    });
+    host.appendChild(chip);
+  }
+}
+
+$("#privacyMode").addEventListener("change", () => {
+  $("#privacyModeHint").textContent = MODE_HINTS[$("#privacyMode").value] || "";
+});
+
+$("#savePrivacy").addEventListener("click", async () => {
+  state.config = await api("/api/config", {
+    method: "PATCH",
+    body: {
+      privacy: {
+        mode: $("#privacyMode").value,
+        categories: [...selectedCategories],
+      },
+    },
+  });
+  $("#savePrivacy").textContent = "Saved";
+  setTimeout(() => ($("#savePrivacy").textContent = "Save privacy settings"), 1400);
+});
+
+/* The receipt. Renders after a run: what stayed on this machine, what left,
+   and what was stripped out of it on the way. */
+function renderPrivacyReceipt(summary, mapping) {
+  const panel = $("#privacyPanel");
+  const body = $("#privacyBody");
+  panel.hidden = false;
+  body.innerHTML = "";
+
+  const remote = summary.remote_calls || 0;
+  const local = summary.local_calls || 0;
+  const blocked = summary.blocked || 0;
+  const protectedCount = summary.protected_values || 0;
+
+  panel.className = "card privacy";
+  if (summary.mode === "off") panel.classList.add("off");
+  else if (remote > 0) panel.classList.add("leaked");
+
+  $("#privacyHeadline").textContent =
+    remote === 0
+      ? "Nothing left this machine"
+      : protectedCount > 0
+      ? `${protectedCount} value${protectedCount === 1 ? "" : "s"} protected before sending`
+      : "No sensitive values found to protect";
+
+  const flow = el("div", { class: "flow" });
+  flow.append(
+    el("span", { class: "leg local" }, [
+      el("span", { class: "n", text: String(local) }),
+      el("span", { text: local === 1 ? "call stayed local" : "calls stayed local" }),
+    ])
+  );
+  if (remote) {
+    flow.appendChild(
+      el("span", { class: "leg remote" }, [
+        el("span", { class: "n", text: String(remote) }),
+        el("span", { text: `sent to ${summary.destinations.join(", ")}` }),
+      ])
+    );
+  }
+  if (blocked) {
+    flow.appendChild(
+      el("span", { class: "leg blocked" }, [
+        el("span", { class: "n", text: String(blocked) }),
+        el("span", { text: "blocked" }),
+      ])
+    );
+  }
+  body.appendChild(flow);
+
+  const redacted = Object.entries(summary.redacted || {});
+  if (redacted.length) {
+    body.appendChild(
+      el("p", {
+        class: "detail",
+        text:
+          "Removed before sending: " +
+          redacted.map(([k, n]) => `${n} × ${(CATEGORY_LABELS[k] || k).toLowerCase()}`).join(", ") +
+          ". The real values were restored in the answer above, on this machine.",
+      })
+    );
+  } else if (summary.mode !== "off" && remote > 0) {
+    body.appendChild(
+      el("p", { class: "detail", text: "No sensitive patterns were found in what was sent." })
+    );
+  }
+
+  const list = el("div", { class: "egress-list" });
+  for (const entry of summary.entries || []) {
+    const counts = Object.entries(entry.redacted || {});
+    list.appendChild(
+      el("div", { class: "egress-row" }, [
+        el("span", { class: `dot ${entry.destination === "local" ? "ok" : "not_configured"}` }),
+        el("span", { class: "where", text: `${entry.provider} · ${entry.model}` }),
+        el("span", {
+          class: "tag",
+          text: entry.blocked
+            ? "blocked — not sent"
+            : entry.destination === "local"
+            ? "stayed on this machine"
+            : `${entry.chars.toLocaleString()} chars sent`,
+        }),
+        counts.length
+          ? el("span", {
+              class: "badge warn",
+              text: counts.map(([k, n]) => `${n} ${k}`).join(", "),
+            })
+          : null,
+        entry.note ? el("span", { class: "tag", text: entry.note }) : null,
+      ])
+    );
+  }
+  body.appendChild(list);
+
+  $("#toggleRestore").hidden = protectedCount === 0;
+}
+
+/* The answer streams in redacted, because that is literally what the hosted
+   model produced. Once the run ends we can put the real values back — they
+   never left, so restoring is a local operation. */
+function applyRestore(mapping) {
+  if (!mapping || !Object.keys(mapping).length) return;
+  const answer = [...document.querySelectorAll("#transcript .msg.assistant .body")].pop();
+  if (!answer) return;
+  answer.dataset.sent = answer.textContent;
+  answer.textContent = answer.textContent.replace(
+    /\[([A-Z]+)_(\d+)\]/g,
+    (token) => (token in mapping ? mapping[token] : token)
+  );
+  answer.dataset.restored = answer.textContent;
+}
+
+$("#toggleRestore").addEventListener("click", () => {
+  const answer = [...document.querySelectorAll("#transcript .msg.assistant .body")].pop();
+  if (!answer || !answer.dataset.sent) return;
+  const showingSent = answer.textContent === answer.dataset.sent;
+  answer.textContent = showingSent ? answer.dataset.restored : answer.dataset.sent;
+  answer.classList.toggle("restored", showingSent);
+  $("#toggleRestore").textContent = showingSent
+    ? "Show what was sent"
+    : "Show the real values";
+});
+
 $("#saveLanes").addEventListener("click", async () => {
   const concurrency = {};
   for (const id of Object.keys(state.providers)) {
@@ -377,6 +570,9 @@ function renderAgents() {
         agent.ready
           ? el("span", { class: "badge", text: modelLabel(agent.model) })
           : el("span", { class: "badge warn", text: "needs a model" }),
+        agent.capabilities?.local_only
+          ? el("span", { class: "badge ok", text: "local only" })
+          : null,
         agent.capabilities?.research ? el("span", { class: "badge accent", text: "research" }) : null,
         agent.soul ? null : el("span", { class: "badge", text: "no soul" }),
         el("span", { class: "spacer" }),
@@ -411,6 +607,7 @@ function openAgent(agent) {
   $("#fSoul").value = agent?.soul || "";
   $("#fTemp").value = agent?.temperature ?? "";
   $("#fResearch").checked = Boolean(agent?.capabilities?.research);
+  $("#fLocalOnly").checked = Boolean(agent?.capabilities?.local_only);
   fillModelSelect(
     $("#fModel"),
     agent?.model?.provider ? `${agent.model.provider}::${agent.model.model}` : ""
@@ -436,7 +633,10 @@ $("#agentDialog").addEventListener("close", async () => {
     role: $("#fRole").value.trim(),
     soul: $("#fSoul").value.trim(),
     model: slot || { provider: "", model: "" },
-    capabilities: { research: $("#fResearch").checked },
+    capabilities: {
+      research: $("#fResearch").checked,
+      local_only: $("#fLocalOnly").checked,
+    },
     temperature: $("#fTemp").value === "" ? null : Number($("#fTemp").value),
   };
   const id = editingId || $("#fId").value.trim();
@@ -521,6 +721,9 @@ function resetRun() {
   state.nodes.clear();
   $("#nodes").innerHTML = "";
   $("#laneSummary").textContent = "";
+  $("#privacyPanel").hidden = true;
+  $("#toggleRestore").hidden = true;
+  $("#toggleRestore").textContent = "Show what was sent";
   notice("#runNotice", "");
 }
 
@@ -630,6 +833,17 @@ function handleRunEvent(event, answer) {
     }
     case "token": {
       answer.body.textContent += event.text;
+      break;
+    }
+    case "node_rerouted": {
+      const node = nodeCard(event.id);
+      node.meta.textContent = `moved to ${event.to} — ${event.categories.join(", ")} must not leave this machine`;
+      node.card.classList.add("running");
+      break;
+    }
+    case "done": {
+      if (event.privacy) renderPrivacyReceipt(event.privacy, event.restore);
+      if (event.restore) applyRestore(event.restore);
       break;
     }
     case "error": {
@@ -878,6 +1092,7 @@ async function boot() {
   }
 
   state.config = await api("/api/config");
+  renderPrivacySettings();
   await refreshProviders();
   await refreshModels();
   await refreshAgents();

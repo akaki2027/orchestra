@@ -27,6 +27,14 @@ class OllamaProvider:
         # Ollama needs no credentials; a host is always present.
         return True
 
+    def is_local(self) -> bool:
+        """Usually true — but not if the user pointed Ollama at another box."""
+        from urllib.parse import urlparse
+
+        from .. import privacy
+
+        return privacy.is_local_host(urlparse(self.host).hostname or "")
+
     def _client(self, timeout: float = 30.0) -> httpx.AsyncClient:
         return httpx.AsyncClient(base_url=self.host, timeout=timeout)
 

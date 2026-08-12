@@ -31,6 +31,11 @@ DEFAULTS: dict[str, Any] = {
     # Per-provider parallelism. Cloud lanes are network-bound so they run wide;
     # the local lane is RAM-bound and must not throttle the cloud ones.
     "concurrency": {"anthropic": 8, "openai_compat": 8, "ollama": 2},
+    # Privacy-tiered routing. Defaults to "redact" rather than "off": the point
+    # of the project is that sensitive values do not reach a hosted model, and
+    # a protection nobody switches on protects nobody. Categories default to
+    # all of them; see privacy.ALL_CATEGORIES.
+    "privacy": {"mode": "redact", "categories": None, "local_fallback": None},
     "mode": "direct",
 }
 

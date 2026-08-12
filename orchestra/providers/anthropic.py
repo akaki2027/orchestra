@@ -43,6 +43,9 @@ class AnthropicProvider:
     def configured(self) -> bool:
         return bool(self.api_key)
 
+    def is_local(self) -> bool:
+        return False
+
     def _client(self):
         if not self.api_key:
             raise ProviderError("No Anthropic API key configured.")

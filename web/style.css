@@ -169,13 +169,13 @@ code {
   font-weight: 700;
   color: var(--gold);
 }
-/* The mark is gold artwork on a black field. Screen drops the field into the
-   ground instead of stamping a black tile onto the oxblood. */
+/* The mark carries its own alpha (see scripts/build_mark.py), so it sits on
+   the ground directly. Blend modes are not needed and could not have worked:
+   screen lifts a near-black field instead of hiding it. */
 .mark img {
   display: block;
   width: 34px;
   height: 34px;
-  mix-blend-mode: screen;
 }
 .tabs button[aria-selected="true"] { border-bottom-color: var(--gold); }
 
@@ -438,8 +438,6 @@ select { appearance: none; padding-right: 30px; background-image: none; }
   width: 132px;
   height: 132px;
   flex: none;
-  mix-blend-mode: screen;
-  opacity: 0.9;
 }
 .hall-empty p {
   color: var(--fg-2);
@@ -647,6 +645,40 @@ select { appearance: none; padding-right: 30px; background-image: none; }
 }
 .tabs button:hover { color: var(--fg); }
 .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--green); }
+
+/* ------------------------------------------------------- machine specs */
+
+.specs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.spec { background: var(--ink-800); padding: 10px 12px; }
+.spec .k {
+  display: block;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg-3);
+  margin-bottom: 3px;
+}
+.spec .v { font-family: var(--mono); font-size: 14px; color: var(--fg); font-variant-numeric: tabular-nums; }
+.spec .v.dim { color: var(--fg-3); }
+.spec.edited { background: var(--gold-dim); }
+.spec.edited .v { color: var(--gold); }
+
+.hint {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+}
 
 /* --------------------------------------------------------------- rows */
 

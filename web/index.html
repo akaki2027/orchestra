@@ -209,8 +209,58 @@ verdict, and DESIGN.md
   </div>
 
   <div id="tab-installed">
+    <!-- What this machine is. Detected on the server, so these are the real
+         figures rather than a browser's guess — and editable, because
+         detection misses things. -->
+    <div class="panel">
+      <div class="panel-head">
+        <h3>This machine</h3>
+        <span class="spacer"></span>
+        <span class="chan" id="machineFit"></span>
+        <button class="btn line sm" id="reDetect">Detect again</button>
+      </div>
+      <div class="panel-body">
+        <div class="specs" id="specs"></div>
+        <div class="row">
+          <label class="field" style="min-width:170px">
+            <span class="field-label">Memory, GB</span>
+            <input type="number" id="hwRam" min="1" max="2048" step="1">
+          </label>
+          <label class="field" style="min-width:170px">
+            <span class="field-label">VRAM, GB</span>
+            <input type="number" id="hwVram" min="1" max="2048" step="1">
+          </label>
+          <label class="field" style="min-width:180px">
+            <span class="field-label">Bandwidth, GB/s</span>
+            <input type="number" id="hwBw" min="1" max="8192" step="1">
+          </label>
+          <label class="field" style="min-width:180px">
+            <span class="field-label">Context assumed</span>
+            <span class="select-wrap">
+              <select id="hwCtx">
+                <option value="4">4k</option>
+                <option value="8">8k</option>
+                <option value="16">16k</option>
+                <option value="32">32k</option>
+                <option value="128">128k</option>
+              </select>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chev"/></svg>
+            </span>
+          </label>
+        </div>
+        <div class="row">
+          <button class="btn sm" id="saveHw">Save corrections</button>
+          <span class="hint" id="hwOverridden"></span>
+        </div>
+        <p class="prose" id="hwNote"></p>
+      </div>
+    </div>
+
     <div id="installedAlert"></div>
-    <div class="panel"><div class="panel-body"><div id="installedList"></div></div></div>
+    <div class="panel">
+      <div class="panel-head"><h3>On disk</h3><span class="spacer"></span><span class="chan" id="installedFit"></span></div>
+      <div class="panel-body"><div id="installedList"></div></div>
+    </div>
   </div>
 
   <div id="tab-pull" hidden>

@@ -10,6 +10,7 @@ const state = {
   models: [],
   agents: [],
   strips: new Map(),
+  hardware: null,
   history: [],
   chosen: [],
   abort: null,
@@ -133,7 +134,7 @@ function showDesk(name) {
   const desk = known.includes(name) ? name : "run";
   $$(".desk-nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.desk === desk ? "page" : "false"));
   $$(".desk").forEach((d) => { d.hidden = d.id !== `desk-${desk}`; });
-  if (desk === "models") loadInstalled();
+  if (desk === "models") { loadMachine(); loadInstalled(); }
   if (location.hash.slice(1) !== desk) history.replaceState(null, "", `#${desk}`);
 }
 
@@ -149,7 +150,7 @@ $$(".tabs button").forEach((b) => {
     for (const t of ["installed", "pull", "router", "hosted"]) {
       $(`#tab-${t}`).hidden = t !== b.dataset.tab;
     }
-    if (b.dataset.tab === "installed") loadInstalled();
+    if (b.dataset.tab === "installed") { loadMachine(); loadInstalled(); }
     if (b.dataset.tab === "router") loadRouter();
     if (b.dataset.tab === "hosted") renderHosted();
   });
@@ -815,6 +816,79 @@ $("#request").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) present();
 });
 
+/* ------------------------------------------------------- this machine */
+
+const FIT_WORD = { clears: "clears", passes: "passes", tight: "tight", over: "won't fit", unknown: "unknown" };
+
+function renderMachine(hw) {
+  state.hardware = hw;
+  const m = hw.machine;
+  const edited = new Set(hw.overridden || []);
+  const host = $("#specs");
+  host.innerHTML = "";
+
+  const rows = [
+    ["Chip", m.chip || "unknown", "chip"],
+    ["Cores", m.cpu_cores ?? "unknown", "cpu_cores"],
+    ["Memory", m.total_ram_gb ? `${m.total_ram_gb} GB${m.unified_memory ? " unified" : ""}` : "unknown", "total_ram_gb"],
+    ["Usable", hw.usable_gb ? `${hw.usable_gb} GB` : "unknown", null],
+    ["Graphics", m.gpu || "unknown", "gpu"],
+    ["Bandwidth", m.bandwidth_gbps ? `${m.bandwidth_gbps} GB/s` : "unknown", "bandwidth_gbps"],
+    ["Disk free", m.disk_free_gb ? `${m.disk_free_gb} GB` : "unknown", "disk_free_gb"],
+  ];
+  for (const [k, v, key] of rows) {
+    const isEdited = key && edited.has(key);
+    host.appendChild(el("div", { class: `spec${isEdited ? " edited" : ""}` }, [
+      el("span", { class: "k", text: k }),
+      el("span", { class: `v${v === "unknown" ? " dim" : ""}`, text: String(v) }),
+    ]));
+  }
+
+  $("#hwRam").value = m.total_ram_gb ?? "";
+  $("#hwVram").value = m.vram_gb ?? "";
+  $("#hwBw").value = m.bandwidth_gbps ?? "";
+  $("#hwCtx").value = String(hw.context_k || 8);
+  $("#hwOverridden").textContent = edited.size
+    ? `${edited.size} value${edited.size === 1 ? "" : "s"} corrected by you`
+    : "";
+  $("#hwNote").textContent = hw.notes?.approximate || "";
+  $("#machineFit").textContent = hw.usable_gb ? `${hw.usable_gb} GB for a model` : "";
+}
+
+async function loadMachine() {
+  renderMachine(await api("/api/hardware"));
+}
+
+$("#saveHw").addEventListener("click", async () => {
+  const num = (id) => ($(id).value === "" ? null : Number($(id).value));
+  renderMachine(await api("/api/hardware", {
+    method: "PATCH",
+    body: {
+      context_k: Number($("#hwCtx").value) || 8,
+      overrides: { total_ram_gb: num("#hwRam"), vram_gb: num("#hwVram"), bandwidth_gbps: num("#hwBw") },
+    },
+  }));
+  flash($("#saveHw"), "Saved");
+  await loadInstalled();
+  await loadSuggested();
+});
+
+$("#hwCtx").addEventListener("change", () => $("#saveHw").click());
+
+$("#reDetect").addEventListener("click", async () => {
+  renderMachine(await api("/api/hardware/detect", { method: "POST" }));
+  await loadInstalled();
+  await loadSuggested();
+});
+
+/* A fit verdict is a stamp, like every other state in this product. */
+function fitStamp(rating) {
+  if (!rating) return null;
+  const s = stamp(rating.stamp, FIT_WORD[rating.verdict] || rating.verdict);
+  s.title = `${rating.note} Needs about ${rating.required_gb} GB of ${rating.usable_gb} GB usable.`;
+  return s;
+}
+
 /* -------------------------------------------------------- local models */
 
 async function loadInstalled() {
@@ -835,11 +909,16 @@ async function loadInstalled() {
     return;
   }
 
+  const fits = data.models.filter((m) => ["clears", "passes"].includes(m.rating?.verdict)).length;
+  $("#installedFit").textContent = `${fits} of ${data.models.length} fit`;
+
   for (const m of data.models) {
     host.appendChild(el("div", { class: "entry" }, [
       el("span", { class: "id", text: m.id }),
+      fitStamp(m.rating),
       m.loaded ? el("span", { class: "chan green", text: "in memory" }) : null,
       el("span", { class: "spacer" }),
+      m.tokens_per_second ? el("span", { class: "sub", text: `~${m.tokens_per_second} tok/s` }) : null,
       el("span", { class: "sub", text: [m.detail, bytes(m.size_bytes)].filter(Boolean).join(" · ") }),
       el("button", {
         class: "btn refuse sm",
@@ -859,19 +938,24 @@ async function loadInstalled() {
 }
 
 async function loadSuggested() {
-  let list = [];
-  try { list = (await (await fetch("/static/catalog.json")).json()).models || []; } catch { /* offline */ }
   const host = $("#suggested");
+  let data = { models: [] };
+  try { data = await api("/api/hardware/suggested"); } catch { /* offline */ }
+
   host.innerHTML = "";
-  for (const m of list) {
+  for (const m of data.models) {
+    const over = m.rating?.verdict === "over";
     host.appendChild(el("div", { class: "entry" }, [
       el("div", { class: "grow" }, [
-        el("div", { class: "id", text: m.name }),
+        el("div", { class: "id" }, [m.name, " ", fitStamp(m.rating)]),
         el("div", { class: "sub", text: m.use }),
       ]),
-      el("span", { class: "sub", text: `${m.size} · ${m.ram}` }),
+      m.tokens_per_second ? el("span", { class: "sub", text: `~${m.tokens_per_second} tok/s` }) : null,
+      el("span", { class: "sub", text: m.required_gb ? `needs ${m.required_gb} GB` : m.size }),
       el("button", {
-        class: "btn line sm", text: "Pull",
+        class: over ? "btn refuse sm" : "btn line sm",
+        text: over ? "Pull anyway" : "Pull",
+        title: over ? m.rating.note : "",
         onclick: () => { $("#pullName").value = m.name; doPull(); },
       }),
     ]));

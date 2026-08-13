@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import StreamingResponse
 
-from .. import config
+from .. import config, hardware
 from ..providers import build
 from ..providers.base import ProviderError
 
@@ -37,10 +37,35 @@ async def installed_models() -> dict[str, Any]:
 
     models = await provider.list_models()
     loaded = await provider.loaded_models()
+
+    cfg = config.load()
+    hw_cfg = cfg.get("hardware") or {}
+    machine = hardware.with_overrides(hardware.detect(), hw_cfg.get("overrides"))
+    try:
+        context_k = max(1, min(1024, int(hw_cfg.get("context_k") or 8)))
+    except (TypeError, ValueError):
+        context_k = 8
+
+    rated = []
+    for m in models:
+        weights_gb = (m.size_bytes / hardware.GB) if m.size_bytes else None
+        params_b = hardware.parse_params_b(m.detail)
+        required = hardware.requirement_gb(
+            weights_gb=weights_gb, params_b=params_b, context_k=context_k
+        )
+        rated.append({
+            **m.as_dict(),
+            "loaded": m.id in loaded,
+            "required_gb": required,
+            "rating": hardware.rate(machine, required),
+            "tokens_per_second": hardware.tokens_per_second(machine, weights_gb),
+        })
+
     return {
         "available": True,
         "status": status.as_dict(),
-        "models": [{**m.as_dict(), "loaded": m.id in loaded} for m in models],
+        "models": rated,
+        "usable_gb": round(machine.usable_gb, 1) if machine.usable_gb else None,
     }
 
 

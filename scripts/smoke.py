@@ -33,6 +33,8 @@ ROUTES: list[tuple[str, str, set[int]]] = [
     ("GET", "/api/models", {200}),
     ("GET", "/api/agents", {200}),
     ("GET", "/api/local/models", {200}),
+    ("GET", "/api/hardware", {200}),
+    ("GET", "/api/hardware/suggested", {200}),
     ("GET", "/api/openrouter/models?q=llama&limit=2", {200, 502}),
     ("GET", "/api/openrouter/models?free=true&limit=2", {200, 502}),
     ("POST", "/api/providers/ollama/test", {200}),

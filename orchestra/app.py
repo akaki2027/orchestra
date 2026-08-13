@@ -12,6 +12,7 @@ from . import config
 from .routes import agents as agents_routes
 from .routes import catalog as catalog_routes
 from .routes import chat as chat_routes
+from .routes import hardware as hardware_routes
 from .routes import providers as provider_routes
 from .routes import runs as runs_routes
 
@@ -25,6 +26,7 @@ def create_app() -> FastAPI:
     app.include_router(catalog_routes.router, prefix="/api")
     app.include_router(agents_routes.router, prefix="/api")
     app.include_router(chat_routes.router, prefix="/api")
+    app.include_router(hardware_routes.router, prefix="/api")
     app.include_router(runs_routes.router, prefix="/api")
 
     @app.get("/api/health")

@@ -39,6 +39,9 @@ DEFAULTS: dict[str, Any] = {
     # a protection nobody switches on protects nobody. Categories default to
     # all of them; see privacy.ALL_CATEGORIES.
     "privacy": {"mode": "redact", "categories": None, "local_fallback": None},
+    # Detection is best-effort — Windows misreports VRAM, and a chip newer than
+    # this release has no bandwidth entry — so anything the user corrects wins.
+    "hardware": {"overrides": {}, "context_k": 8},
     "mode": "direct",
 }
 
@@ -116,19 +119,41 @@ def save(cfg: dict[str, Any]) -> dict[str, Any]:
     return cfg
 
 
+def _stored() -> dict[str, Any]:
+    """What is actually on disk — never the env-merged view.
+
+    Anything that writes must start from this. Round-tripping `load()` would
+    persist environment-supplied API keys into the file, which is the one thing
+    the env-override design exists to prevent.
+    """
+    if not CONFIG_PATH.exists():
+        return {}
+    try:
+        return json.loads(CONFIG_PATH.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
 def update(patch: dict[str, Any]) -> dict[str, Any]:
     """Merge a partial update into the stored config and save it.
 
     Only the file is written; environment overrides are re-applied on load, so a
     key supplied by the environment is never copied to disk.
     """
-    stored: dict[str, Any] = {}
-    if CONFIG_PATH.exists():
-        try:
-            stored = json.loads(CONFIG_PATH.read_text())
-        except (json.JSONDecodeError, OSError):
-            stored = {}
-    save(_merge(stored, patch))
+    save(_merge(_stored(), patch))
+    return load()
+
+
+def replace(section: str, key: str, value: Any) -> dict[str, Any]:
+    """Set one key outright, replacing rather than merging.
+
+    `update()` merges recursively, so passing an empty dict to clear a section
+    is a silent no-op — which made a "reset to detected" button do nothing at
+    all. Anything that needs to *remove* state has to come through here.
+    """
+    stored = _stored()
+    stored.setdefault(section, {})[key] = value
+    save(stored)
     return load()
 
 

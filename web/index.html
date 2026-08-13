@@ -95,15 +95,18 @@ verdict, and DESIGN.md
         <p class="empty">Present a request. In Auto the controlling agent decides which agents handle it, and the ones that do not depend on each other work at the same time.</p>
       </div>
       <div class="compose">
-        <textarea id="request" class="grow" rows="2" placeholder="What needs doing?" aria-label="Your request"></textarea>
-        <button class="btn" id="send">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-send"/></svg>
-          Present
-        </button>
-        <button class="btn line" id="halt" hidden>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-stop"/></svg>
-          Halt
-        </button>
+        <textarea id="request" rows="3" placeholder="What needs doing?" aria-label="Your request"></textarea>
+        <div class="compose-foot">
+          <span class="hint" id="composeHint"></span>
+          <button class="btn line" id="halt" hidden>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-stop"/></svg>
+            Halt
+          </button>
+          <button class="btn" id="send">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-send"/></svg>
+            Present
+          </button>
+        </div>
       </div>
     </div>
   </div>

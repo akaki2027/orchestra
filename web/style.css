@@ -187,6 +187,8 @@ code {
   padding-left: 20px;
   min-width: 0;
 }
+.post-head .stamp { transform: none; }
+
 .post-head .posting .model {
   font-family: var(--mono);
   font-size: 14px;
@@ -377,8 +379,46 @@ select { appearance: none; padding-right: 30px; background-image: none; }
 }
 .empty { color: var(--fg-3); font-size: 13.5px; max-width: 62ch; }
 
-.compose { display: flex; gap: 10px; align-items: flex-end; }
-.compose textarea { min-height: 58px; }
+.compose {
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--ink-750);
+  overflow: hidden;
+  transition: border-color 0.15s ease-out;
+}
+.compose:hover { border-color: var(--rule-lit); }
+.compose:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
+
+.compose textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 13px 14px;
+  resize: none;
+  line-height: 1.6;
+}
+.compose textarea:hover { border: 0; }
+/* The frame already shows focus; a second ring inside it is noise. */
+.compose textarea:focus-visible { outline: none; }
+
+.compose-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 14px;
+  border-top: 1px solid var(--rule);
+  background: var(--ink-800);
+}
+.compose-foot .hint {
+  margin-right: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--fg-3);
+}
 
 /* ------------------------------------------------- THE BORDER (hall) */
 
@@ -720,9 +760,9 @@ dialog::backdrop { background: rgba(8, 5, 5, 0.72); }
   .desk-nav { margin-left: 0; width: 100%; overflow-x: auto; }
   main { padding: 20px 14px 72px; }
   .bay { grid-template-columns: 1fr; }
-  .compose { flex-wrap: wrap; }
-  .compose .grow { min-width: 100%; }
-  .compose .btn { flex: 1; justify-content: center; }
+  .compose textarea { min-height: 112px; }
+  .compose-foot .hint { display: none; }
+  .compose-foot .btn { flex: 1; justify-content: center; }
   .hall-empty { flex-direction: column; align-items: flex-start; gap: 16px; padding: 20px 16px 22px; }
   .hall-empty img { width: 92px; height: 92px; }
 }

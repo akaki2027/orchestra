@@ -801,6 +801,14 @@ async function present() {
   }
 }
 
+/* The shortcut takes either modifier, so name the one this machine has
+   rather than shipping a Mac glyph a mono stack may not even carry. */
+$("#composeHint").textContent =
+  (navigator.platform || "").toLowerCase().includes("mac") ||
+  /Mac|iPhone|iPad/.test(navigator.userAgent)
+    ? "Cmd + Return to present"
+    : "Ctrl + Enter to present";
+
 $("#send").addEventListener("click", present);
 $("#halt").addEventListener("click", () => state.abort?.abort());
 $("#request").addEventListener("keydown", (e) => {

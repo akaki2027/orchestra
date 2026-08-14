@@ -187,6 +187,69 @@ The keyless default uses DuckDuckGo's HTML endpoint, which is not a documented A
 their markup changes. When search returns nothing the agent is told search was unavailable, rather
 than being handed silence and left to guess.
 
+## Tools
+
+Research gives an agent read-only web access. Tools give it everything else: reading and writing
+files in one folder you nominate, and anything an MCP server offers. **Grants are per agent and
+default to none** — adding a server does not widen what any existing agent can do.
+
+Every tool declares where it runs, and that declaration is the whole design:
+
+- **Interior** — the filesystem tool, and any MCP server spawned as a process on this machine.
+  Nothing crosses the border. Recorded on the declaration anyway, because "6 of 8 calls never left"
+  is only provable if the ones that stayed are counted.
+- **Exterior** — a hosted MCP endpoint. Its arguments are inspected under the same policy as a model
+  call, redacted or refused the same way, and land on the same declaration as their own row. That
+  is enforced in `tools/guard.py`, applied by `tools/registry.build_for()`, which is the only way to
+  obtain a tool.
+
+### Filesystem
+
+One folder, read-only unless you turn writing on. The entire risk is path escape, so every path is
+resolved *before* it is checked — `..`, an absolute path, and a symlink pointing at `~/.ssh` all
+fail, which a check on the raw string would not catch. Credential files (`.env`, `.netrc`, keys,
+`.pem`) and `.git` are refused whatever folder you nominate. A replaced file keeps its previous
+contents beside it as `.orchestra-bak`.
+
+Your editor reloads from disk, so an agent editing your project appears as a diff in VS Code without
+anything driving the editor.
+
+### MCP
+
+Servers publish their own tools, which is why Orchestra needs no adapter per service. Two transports:
+`stdio` (a process here, interior) and streamable HTTP (someone else's, exterior).
+
+A stdio server is arbitrary code running as you — `npx -y some-package` downloads and executes
+whatever is behind that name. So Orchestra **never installs anything**, shows you the exact command
+verbatim, and refuses to spawn it until you have approved that command. Changing the command revokes
+the approval, because approval is of a command line and not of a name. A shell (`sh`, `bash`, `eval`,
+`curl`) is refused as the command outright: approving one once would approve anything it was later
+handed.
+
+### Tool calling is where small models break
+
+Calling a tool means emitting exact JSON on demand. Models under roughly 7B do that unreliably —
+they describe the call in prose instead of making it, and the step then looks like it succeeded
+while nothing ran. Orchestra estimates this from the model you picked and **warns in the agent
+editor rather than blocking**, because it is your machine.
+
+The loop itself is one text protocol across every provider, not each vendor's native tool API. A
+loop built on native calling would work on Claude and silently do nothing on the local models this
+project exists to make useful.
+
+### What a small local agent is actually for
+
+Not tools. A 3B model on your machine is a different instrument, and it is genuinely good at:
+
+- **Bulk transformation over text you already have** — summarising, reformatting, extracting fields,
+  translating. No decision to get wrong, the input is in the prompt, and it never leaves.
+- **The privacy lane** — any step touching real names, keys, or client data. This is the one thing
+  no hosted model can offer at any size.
+- **Wide parallel fan-out** — twelve documents, one question each, several at once.
+- **First-pass drafting and triage** — deciding what deserves a bigger model.
+
+Leave tool calling, multi-step reasoning, and final synthesis to a larger agent.
+
 ## Where your keys live
 
 In `~/.orchestra/config.json`, mode `0600`, on your machine only. Never in the repo — the directory
@@ -216,6 +279,13 @@ orchestra/
   runner.py        parallel executor, per-provider lanes, event stream
   privacy.py       detectors, redaction, policy, and the per-run ledger
   research.py      keyless search + fetch, SSRF guard, untrusted wrapping
+  tools/
+    base.py        the tool seam; every tool declares local or remote reach
+    filesystem.py  workspace-confined file access, resolve-then-contain
+    mcp.py         MCP client over stdio and HTTP, plus the approval gate
+    guard.py       the second egress choke point, for remote tool calls
+    executor.py    the tool-calling loop, one protocol for every provider
+    registry.py    grants, and the only source of tools
   providers/
     base.py        the swap seam
     guard.py       the egress choke point — read this to audit the claim
@@ -233,7 +303,9 @@ To add a provider, implement the `Provider` protocol in `providers/base.py` and 
 - **Plan quality tracks the big agent.** A 3B local planner will over-decompose — one test run
   produced 11 tasks for a question that needed 3. Sub-agents can be small; the big agent benefits
   from being the strongest model you have.
-- Sub-agents are text-only apart from research. No file or shell access in v1.
+- **Tool calling needs a capable model.** Below ~7B it fails often and quietly; the agent editor
+  warns you. There is still no shell access — files and MCP only.
+- MCP resources and prompts are not supported yet, only tools.
 - No authentication, and conversation history is per-browser-session and not persisted.
 - The keyless search backend is best-effort (see Research above).
 

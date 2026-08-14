@@ -20,4 +20,4 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["orchestra", "orchestra.providers", "orchestra.routes"]
+packages = ["orchestra", "orchestra.providers", "orchestra.routes", "orchestra.tools"]

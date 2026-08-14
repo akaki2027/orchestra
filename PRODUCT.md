@@ -71,7 +71,13 @@ the repo. No authentication — binding beyond localhost prints a warning.
   `providers/guard.py`, applied by `registry.build()`, which is the only way to obtain a provider.
 - Detection is deterministic regex plus checksums, never a classifier — so it is auditable, and so
   it provably misses names, addresses, and contextual sensitivity.
-- Sub-agents are text-only apart from optional read-only web research.
+- **Tools** are per-agent grants, default none: a workspace-confined filesystem tool and any MCP
+  server (stdio or HTTP). Remote tool calls pass the same policy as model calls, enforced in
+  `tools/guard.py` and applied by `tools/registry.build_for()`, the only way to obtain a tool.
+- stdio MCP servers require explicit per-command approval before Orchestra will spawn them, and
+  editing the command revokes it. Orchestra never installs anything.
+- Tool calling is unreliable below ~7B, so the agent editor warns on the model you picked rather
+  than blocking the grant.
 - Conversation history is per-browser-session and not persisted. No accounts, no telemetry.
 
 ## Brand Commitments

@@ -65,7 +65,7 @@ class Caps:
 class Chunk:
     """One streamed event from a chat call."""
 
-    type: Literal["text", "usage", "tool", "done"]
+    type: Literal["text", "usage", "tool", "tool_result", "done"]
     text: str = ""
     data: dict[str, Any] = field(default_factory=dict)
 

@@ -101,6 +101,11 @@ def normalize(raw: dict[str, Any]) -> dict[str, Any]:
         except KeyError:
             raise AgentError(f"Unknown provider: {provider}") from None
 
+    # Tool grants. Unknown ids are kept rather than dropped: a server can be
+    # removed and re-added, and silently erasing the grant would mean the agent
+    # comes back with less than the user gave it.
+    tools = [str(t) for t in (raw.get("tools") or []) if str(t).strip()]
+
     temperature = raw.get("temperature")
     if temperature is not None:
         try:
@@ -115,6 +120,7 @@ def normalize(raw: dict[str, Any]) -> dict[str, Any]:
         "soul": (raw.get("soul") or "").strip(),
         "model": {"provider": provider, "model": model_id},
         "capabilities": {"research": bool(caps.get("research")), "local_only": local_only},
+        "tools": tools,
         "temperature": temperature,
     }
 

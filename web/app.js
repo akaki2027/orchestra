@@ -11,6 +11,7 @@ const state = {
   agents: [],
   strips: new Map(),
   hardware: null,
+  tools: null,
   history: [],
   chosen: [],
   abort: null,
@@ -135,6 +136,7 @@ function showDesk(name) {
   $$(".desk-nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.desk === desk ? "page" : "false"));
   $$(".desk").forEach((d) => { d.hidden = d.id !== `desk-${desk}`; });
   if (desk === "models") { loadMachine(); loadInstalled(); }
+  if (desk === "tools") loadTools();
   if (location.hash.slice(1) !== desk) history.replaceState(null, "", `#${desk}`);
 }
 
@@ -389,6 +391,7 @@ function renderAgents() {
       a.ready ? el("span", { class: "chan", text: a.model.model }) : stamp("void", "no model"),
       caps.local_only ? el("span", { class: "chan green", text: "interior only" }) : null,
       caps.research ? el("span", { class: "chan", text: "reads web" }) : null,
+      (a.tools || []).length ? el("span", { class: "chan", text: `${a.tools.length} tool${a.tools.length === 1 ? "" : "s"}` }) : null,
       el("span", { class: "spacer" }),
       el("button", { class: "btn line sm", text: "Edit", onclick: () => openAgent(a) }),
       el("button", {
@@ -409,6 +412,219 @@ function renderAgents() {
   renderRoster();
 }
 
+/* ------------------------------------------------------------------ tools */
+
+async function loadTools() {
+  state.tools = await api("/api/tools");
+  renderTools();
+}
+
+function renderTools() {
+  const t = state.tools;
+  if (!t) return;
+
+  $("#fsRoot").value = t.filesystem.root || "";
+  $("#fsWrite").checked = Boolean(t.filesystem.writable);
+
+  const host = $("#serverList");
+  host.innerHTML = "";
+  if (!t.servers.length) {
+    host.appendChild(el("p", { class: "empty", text: "No servers yet." }));
+  }
+  for (const s of t.servers) {
+    host.appendChild(el("div", { class: "entry" }, [
+      el("span", { class: "id", text: s.name }),
+      el("span", { class: `chan ${s.reach === "local" ? "green" : "red"}`,
+                   text: s.reach === "local" ? "interior" : "exterior" }),
+      s.transport === "stdio" && !s.approved ? stamp("void", "not approved") : null,
+      el("span", { class: "spacer" }),
+      s.transport === "stdio" && !s.approved
+        ? el("button", {
+            class: "btn sm", text: "Approve",
+            onclick: async () => {
+              const go = await confirmRefuse(
+                `Run ${s.name} on this machine?`,
+                `Approving lets Orchestra run “${s.command_line}” as you, whenever an agent granted this server calls one of its tools. Approve only a command you recognise.`
+              );
+              if (!go) return;
+              state.tools = await api(`/api/tools/mcp/${s.name}/approve`, { method: "POST" });
+              renderTools();
+            },
+          })
+        : null,
+      el("button", { class: "btn line sm", text: "Edit", onclick: () => openServer(s) }),
+      el("button", {
+        class: "btn refuse sm", text: "Remove",
+        onclick: async () => {
+          const go = await confirmRefuse(
+            `Turn back ${s.name}?`,
+            "The server is removed and the grant is withdrawn from every agent that had it. Nothing on your machine is deleted."
+          );
+          if (!go) return;
+          state.tools = await api(`/api/tools/mcp/${s.name}`, { method: "DELETE" });
+          renderTools();
+          await loadAgents();
+        },
+      }),
+      el("span", { class: "desc", text: s.command_line || s.url || "" }),
+    ]));
+  }
+
+  $("#smallModelWarn").textContent = t.guidance.small_model_tools;
+  const use = $("#smallModelUse");
+  use.innerHTML = "";
+  for (const item of t.guidance.small_model_use) {
+    use.appendChild(el("div", { class: "entry stack" }, [
+      el("span", { class: "id", text: item.title }),
+      el("span", { class: "desc", text: item.body }),
+    ]));
+  }
+  const avoid = $("#smallModelAvoid");
+  avoid.innerHTML = "";
+  for (const line of t.guidance.small_model_avoid) {
+    avoid.appendChild(el("li", { text: line }));
+  }
+}
+
+$("#saveWorkspace").addEventListener("click", async () => {
+  try {
+    state.tools = await api("/api/tools/filesystem", {
+      method: "PATCH",
+      body: { root: $("#fsRoot").value.trim(), writable: $("#fsWrite").checked },
+    });
+    renderTools();
+    say("#toolsAlert", "");
+    flash($("#saveWorkspace"), "Saved");
+  } catch (err) {
+    say("#toolsAlert", err.message, "bad");
+  }
+});
+
+/* ---- server dialog ---- */
+
+let editingServer = null;
+
+function serverBody() {
+  const transport = $("#sTransport").value;
+  return {
+    name: $("#sName").value.trim(),
+    transport,
+    command: transport === "stdio" ? $("#sCommand").value.trim() : null,
+    args: transport === "stdio" ? $("#sArgs").value.trim().split(/\s+/).filter(Boolean) : [],
+    url: transport === "http" ? $("#sUrl").value.trim() : null,
+    auth_header: transport === "http" ? ($("#sAuth").value.trim() || null) : null,
+  };
+}
+
+function syncTransport() {
+  const stdio = $("#sTransport").value === "stdio";
+  $("#srvStdio").hidden = !stdio;
+  $("#srvHttp").hidden = stdio;
+}
+
+$("#sTransport").addEventListener("change", syncTransport);
+
+function openServer(s) {
+  editingServer = s ? s.name : null;
+  $("#srvTitle").textContent = s ? `Edit ${s.name}` : "Add an MCP server";
+  say("#srvAlert", "");
+  $("#srvProbe").innerHTML = "";
+  $("#sName").value = s?.name || "";
+  $("#sName").disabled = Boolean(s);
+  $("#sTransport").value = s?.transport || "stdio";
+  $("#sCommand").value = s?.command || "";
+  $("#sArgs").value = (s?.args || []).join(" ");
+  $("#sUrl").value = s?.url || "";
+  $("#sAuth").value = "";
+  syncTransport();
+  $("#serverDlg").showModal();
+}
+
+$("#newServer").addEventListener("click", () => openServer(null));
+
+$("#probeServer").addEventListener("click", async () => {
+  const body = serverBody();
+  // A saved-and-approved command server can be started; anything else is
+  // described rather than run, which is the whole point of the approval gate.
+  const known = (state.tools?.servers || []).find((s) => s.name === body.name);
+  body.approved = Boolean(known?.approved && known.command_line === [body.command, ...body.args].join(" ").trim());
+  const host = $("#srvProbe");
+  host.innerHTML = "";
+  say("#srvAlert", "");
+  try {
+    const res = await api("/api/tools/mcp/probe", { method: "POST", body });
+    host.appendChild(el("p", { class: "note", text: `${res.tools.length} tool${res.tools.length === 1 ? "" : "s"} offered:` }));
+    for (const tool of res.tools) {
+      host.appendChild(el("div", { class: "entry stack" }, [
+        el("span", { class: "id", text: tool.name }),
+        el("span", { class: "desc", text: tool.description || "" }),
+      ]));
+    }
+  } catch (err) {
+    say("#srvAlert", err.message, "bad");
+  }
+});
+
+$("#serverDlg").addEventListener("close", async () => {
+  if ($("#serverDlg").returnValue !== "save") return;
+  try {
+    state.tools = await api("/api/tools/mcp", { method: "POST", body: serverBody() });
+    renderTools();
+    say("#toolsAlert", "");
+  } catch (err) {
+    say("#toolsAlert", err.message, "bad");
+    showDesk("tools");
+  }
+});
+
+/* ---- grants and the reliability warning, inside the agent editor ---- */
+
+function renderGrants(granted) {
+  const host = $("#fTools");
+  host.innerHTML = "";
+  const offered = state.tools?.available || [];
+  if (!offered.length) {
+    host.appendChild(el("p", { class: "empty", text: "No tools configured. Open the Tools desk." }));
+    return;
+  }
+  for (const item of offered) {
+    const box = el("input", { type: "checkbox", value: item.id });
+    box.checked = granted.includes(item.id);
+    box.disabled = !item.ready;
+    box.addEventListener("change", warnAboutTools);
+    host.appendChild(el("label", { class: "check" }, [
+      box,
+      el("span", { class: "txt" }, [
+        el("strong", { text: item.label }),
+        ` — ${item.reach === "local" ? "interior" : "exterior"}. ${item.detail}`,
+        item.needs_approval ? " Not approved yet." : "",
+      ]),
+    ]));
+  }
+}
+
+function grantsChosen() {
+  return $$("#fTools input:checked").map((b) => b.value);
+}
+
+async function warnAboutTools() {
+  const warn = $("#fToolWarn");
+  if (!grantsChosen().length) { warn.hidden = true; return; }
+
+  const chosen = slot($("#fModel").value);
+  if (!chosen) { warn.hidden = true; return; }
+
+  try {
+    const r = await api(`/api/tools/reliability?provider=${encodeURIComponent(chosen.provider)}&model=${encodeURIComponent(chosen.model)}`);
+    // Only a real problem is worth a banner. "Good" needs no reassurance.
+    if (r.level === "good") { warn.hidden = true; return; }
+    warn.hidden = false;
+    warn.textContent = r.note;
+  } catch {
+    warn.hidden = true;
+  }
+}
+
 let editing = null;
 
 function openAgent(a) {
@@ -424,10 +640,13 @@ function openAgent(a) {
   $("#fResearch").checked = Boolean(a?.capabilities?.research);
   $("#fLocal").checked = Boolean(a?.capabilities?.local_only);
   fillModels($("#fModel"), a?.model?.provider ? `${a.model.provider}::${a.model.model}` : "");
+  renderGrants(a?.tools || []);
+  warnAboutTools();
   $("#agentDlg").showModal();
 }
 
 $("#newAgent").addEventListener("click", () => openAgent(null));
+$("#fModel").addEventListener("change", warnAboutTools);
 
 $("#fName").addEventListener("input", () => {
   if (editing) return;
@@ -442,6 +661,7 @@ $("#agentDlg").addEventListener("close", async () => {
     soul: $("#fSoul").value.trim(),
     model: slot($("#fModel").value) || { provider: "", model: "" },
     capabilities: { research: $("#fResearch").checked, local_only: $("#fLocal").checked },
+    tools: grantsChosen(),
     temperature: $("#fTemp").value === "" ? null : Number($("#fTemp").value),
   };
   const id = editing || $("#fId").value.trim();
@@ -687,6 +907,14 @@ function onEvent(ev, answer) {
     case "node_tool": {
       const s = stripFor(ev.id);
       s.meta.textContent += ` · ${ev.name || "tool"}`;
+      // An exterior call is a border crossing and reads as one.
+      if (ev.reach === "remote") s.meta.textContent += " (exterior)";
+      break;
+    }
+
+    case "node_tool_result": {
+      const s = stripFor(ev.id);
+      if (!ev.ok) s.meta.textContent += " · refused";
       break;
     }
 
@@ -1092,6 +1320,7 @@ async function boot() {
   await loadProviders();
   await loadModels();
   await loadAgents();
+  await loadTools();
   await loadSuggested();
   renderRoster();
   showDesk(location.hash.slice(1));

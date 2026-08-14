@@ -15,6 +15,7 @@ from .routes import chat as chat_routes
 from .routes import hardware as hardware_routes
 from .routes import providers as provider_routes
 from .routes import runs as runs_routes
+from .routes import tools as tools_routes
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_routes.router, prefix="/api")
     app.include_router(hardware_routes.router, prefix="/api")
     app.include_router(runs_routes.router, prefix="/api")
+    app.include_router(tools_routes.router, prefix="/api")
 
     @app.get("/api/health")
     async def health() -> dict:

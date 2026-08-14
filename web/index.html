@@ -53,6 +53,7 @@ verdict, and DESIGN.md
     <button data-desk="run" aria-current="page">Desk</button>
     <button data-desk="agents">Agents</button>
     <button data-desk="models">Models</button>
+    <button data-desk="tools">Tools</button>
     <button data-desk="settings">Settings</button>
   </nav>
 </header>
@@ -313,6 +314,68 @@ verdict, and DESIGN.md
 </section>
 
 <!-- ══════════════════════════ SETTINGS ══════════════════════════ -->
+<!-- ══════════════════════════ TOOLS ══════════════════════════ -->
+<section class="desk" id="desk-tools" hidden>
+  <div class="desk-title">
+    <h2>Tools</h2>
+    <p class="prose">What an agent can reach beyond its own words. Every tool declares where it runs: an <strong>interior</strong> tool touches this machine only, an <strong>exterior</strong> one is inspected at the same checkpoint as a model call and appears on the same declaration. Nothing is granted to any agent until you grant it, per agent.</p>
+  </div>
+  <div id="toolsAlert"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Workspace</h3>
+      <span class="spacer"></span>
+      <span class="chan green">interior</span>
+    </div>
+    <div class="panel-body">
+      <p class="prose">One folder an agent may read. Paths cannot escape it — <code>..</code>, an absolute path, and a symlink pointing elsewhere are all resolved before the check and refused. Credential files and <code>.git</code> are never opened whatever the folder holds. Your editor reloads from disk, so an agent's edits arrive as a diff without anything driving the editor.</p>
+
+      <label class="field">
+        <span class="field-label">Folder</span>
+        <input type="text" id="fsRoot" placeholder="/Users/you/Projects/thing" spellcheck="false">
+        <span class="note">A project folder, not your home directory.</span>
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="fsWrite">
+        <span class="txt"><strong>May write, not only read.</strong> Off by default. A replaced file keeps its previous contents beside it as <code>.orchestra-bak</code>.</span>
+      </label>
+
+      <button class="btn" id="saveWorkspace">Save workspace</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>MCP servers</h3>
+      <span class="spacer"></span>
+      <button class="btn sm" id="newServer">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-plus"/></svg>
+        Add server
+      </button>
+    </div>
+    <div class="panel-body">
+      <p class="prose">Model Context Protocol servers publish their own tools, which is why Orchestra needs no adapter per service. A <strong>command</strong> server runs on this machine and stays interior. A <strong>URL</strong> server is someone else's, so its calls cross the border and are inspected on the way out.</p>
+      <div id="serverList"></div>
+      <div class="note-strip warn">
+        A command server is arbitrary code running as you — <code>npx -y some-package</code> downloads and executes whatever is behind that name. Orchestra never installs anything and never spawns a server until you have approved that exact command. Changing the command revokes the approval.
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h3>What to give a small local agent</h3></div>
+    <div class="panel-body">
+      <div class="note-strip warn" id="smallModelWarn"></div>
+      <p class="prose">A 3B model on your machine is not a small frontier model. It is a different instrument, and it is genuinely good at some things:</p>
+      <div id="smallModelUse"></div>
+      <p class="prose">Leave these to a larger agent:</p>
+      <ul class="plain" id="smallModelAvoid"></ul>
+    </div>
+  </div>
+</section>
+
 <section class="desk" id="desk-settings" hidden>
   <div class="desk-title">
     <h2>Settings</h2>
@@ -414,6 +477,14 @@ verdict, and DESIGN.md
         <span class="txt"><strong>May read the web.</strong> Off by default. Anthropic agents use Anthropic's own server-side search; others use a read-only fetch from this machine. Fetched pages are handled as untrusted data, never as instructions.</span>
       </label>
 
+      <div class="field">
+        <span class="field-label">Tools</span>
+        <div id="fTools"></div>
+        <span class="note">Granted per agent. An agent with none can only write.</span>
+      </div>
+
+      <div class="note-strip warn" id="fToolWarn" hidden></div>
+
       <label class="check">
         <input type="checkbox" id="fLocal">
         <span class="txt"><strong>Interior only. Never crosses the border.</strong> This agent can only hold a model served locally; saving it against a hosted model is refused. It is also told to hand later steps an abstraction rather than the raw details, so a hosted agent can work the problem without receiving the material.</span>
@@ -422,6 +493,64 @@ verdict, and DESIGN.md
     <div class="dlg-foot">
       <button class="btn line" value="cancel">Cancel</button>
       <button class="btn" id="saveAgent" value="save">Save agent</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="serverDlg">
+  <form method="dialog">
+    <div class="dlg-head"><h3 id="srvTitle">Add an MCP server</h3></div>
+    <div class="dlg-body">
+      <div id="srvAlert"></div>
+
+      <label class="field">
+        <span class="field-label">Name</span>
+        <input type="text" id="sName" placeholder="github" spellcheck="false">
+        <span class="note">Short. Its tools appear as <code>name.tool</code>.</span>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Kind</span>
+        <span class="select-wrap">
+          <select id="sTransport">
+            <option value="stdio">Command — runs here, stays interior</option>
+            <option value="http">URL — someone else's server, crosses the border</option>
+          </select>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chev"/></svg>
+        </span>
+      </label>
+
+      <div id="srvStdio">
+        <label class="field">
+          <span class="field-label">Command</span>
+          <input type="text" id="sCommand" placeholder="npx" spellcheck="false">
+          <span class="note">Must be on your PATH. A shell (<code>sh</code>, <code>bash</code>) is refused: approving one would approve anything it is later handed.</span>
+        </label>
+        <label class="field">
+          <span class="field-label">Arguments</span>
+          <input type="text" id="sArgs" placeholder="-y @modelcontextprotocol/server-github" spellcheck="false">
+          <span class="note">Space-separated.</span>
+        </label>
+      </div>
+
+      <div id="srvHttp" hidden>
+        <label class="field">
+          <span class="field-label">URL</span>
+          <input type="text" id="sUrl" placeholder="https://mcp.example.com/v1" spellcheck="false">
+        </label>
+        <label class="field">
+          <span class="field-label">Authorization header</span>
+          <input type="text" id="sAuth" placeholder="Bearer …" spellcheck="false">
+          <span class="note">Optional. Held on this machine with your other credentials, never shown back.</span>
+        </label>
+      </div>
+
+      <div id="srvProbe"></div>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn line" value="cancel">Cancel</button>
+      <button class="btn line" id="probeServer" type="button">Ask what it offers</button>
+      <button class="btn" id="saveServer" value="save">Save server</button>
     </div>
   </form>
 </dialog>

@@ -35,6 +35,8 @@ ROUTES: list[tuple[str, str, set[int]]] = [
     ("GET", "/api/local/models", {200}),
     ("GET", "/api/hardware", {200}),
     ("GET", "/api/hardware/suggested", {200}),
+    ("GET", "/api/tools", {200}),
+    ("GET", "/api/tools/reliability?provider=ollama&model=qwen2.5:3b", {200}),
     ("GET", "/api/openrouter/models?q=llama&limit=2", {200, 502}),
     ("GET", "/api/openrouter/models?free=true&limit=2", {200, 502}),
     ("POST", "/api/providers/ollama/test", {200}),
@@ -45,6 +47,10 @@ ROUTES: list[tuple[str, str, set[int]]] = [
     ("POST", "/api/openrouter/starred", {400}, {"id": "no-slash"}),
     ("PUT", "/api/agents/smoke-probe", {400}, {"name": "x", "role": "", "model": {}}),
     ("DELETE", "/api/agents/definitely-not-here", {404}),
+    # A shell as an MCP command must be refused, never merely saved.
+    ("POST", "/api/tools/mcp", {400}, {"name": "probe", "transport": "stdio", "command": "bash"}),
+    ("POST", "/api/tools/mcp/probe", {400}, {"name": "probe", "transport": "http", "url": "not-a-url"}),
+    ("DELETE", "/api/tools/mcp/definitely-not-here", {200}),
 ]
 
 

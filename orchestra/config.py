@@ -42,6 +42,9 @@ DEFAULTS: dict[str, Any] = {
     # Detection is best-effort — Windows misreports VRAM, and a chip newer than
     # this release has no bandwidth entry — so anything the user corrects wins.
     "hardware": {"overrides": {}, "context_k": 8},
+    # Tools are the second way data can leave. Grants are per agent and default
+    # to none, so adding a server here does not widen what existing agents do.
+    "tools": {"filesystem": {"root": None, "writable": False}, "mcp_servers": []},
     "mode": "direct",
 }
 

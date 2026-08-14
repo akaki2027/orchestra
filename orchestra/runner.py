@@ -19,6 +19,8 @@ from typing import Any, AsyncIterator
 
 from . import agents as agent_store
 from . import config, privacy, research
+from .tools import executor
+from .tools import registry as tool_registry
 from .planner import Plan
 from .providers import build
 from .providers.base import Chunk, Msg, ProviderError
@@ -122,6 +124,23 @@ async def run_agent(
     prompt = "\n\n".join(p for p in parts if p).strip()
 
     tools = ["research"] if wants_research and provider.caps.server_side_research else None
+
+    # Granted tools put this node in a loop instead of a single call. Built here
+    # rather than at plan time because an MCP server has to be alive to say what
+    # it offers, and a run should not be planned around tools that vanished.
+    granted = await tool_registry.build_for(agent)
+    if granted:
+        async for chunk in executor.run_with_tools(
+            provider,
+            slot["model"],
+            prompt,
+            agent_store.system_prompt(agent),
+            granted,
+            temperature=agent.get("temperature"),
+            max_tokens=4096,
+        ):
+            yield chunk
+        return
 
     async for chunk in provider.chat(
         slot["model"],
@@ -266,6 +285,8 @@ class Run:
                         self._add_usage(chunk.data)
                     elif chunk.type == "tool":
                         self.emit({"type": "node_tool", "id": task_id, **chunk.data})
+                    elif chunk.type == "tool_result":
+                        self.emit({"type": "node_tool_result", "id": task_id, **chunk.data})
                 return "".join(collected)
 
             try:

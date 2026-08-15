@@ -32,6 +32,7 @@ ATTRIBUTION = {
 }
 
 CATALOG_TTL = 900  # seconds; the catalog moves, but not every keystroke.
+KEY_TTL = 60       # a key check is one request; do not make it per keystroke.
 
 
 class OpenRouterProvider:
@@ -41,6 +42,9 @@ class OpenRouterProvider:
 
     _catalog: list[dict[str, Any]] = []
     _fetched_at: float = 0.0
+    # Cached by key, so changing the key re-checks immediately rather than
+    # showing the old verdict for a minute.
+    _key_state: dict[str, tuple[float, str, str]] = {}
 
     def __init__(self, api_key: str | None = None, starred: list[str] | None = None) -> None:
         self.api_key = api_key or None
@@ -51,6 +55,51 @@ class OpenRouterProvider:
 
     def is_local(self) -> bool:
         return False
+
+    async def key_state(self) -> tuple[str, str]:
+        """Is this key usable? Returns (state, detail).
+
+        Worth its own method because `configured()` can only tell you a key
+        exists. The model catalog is a public endpoint, so a revoked key still
+        browses 400 models perfectly — you would star some, wire them to
+        agents, and only find out at run time. This is what closes that gap.
+        """
+        if not self.api_key:
+            return ("missing", "No OpenRouter key yet. Browsing works without one; running does not.")
+
+        cls = type(self)
+        cached = cls._key_state.get(self.api_key)
+        if cached and (time.time() - cached[0]) < KEY_TTL:
+            return (cached[1], cached[2])
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(f"{BASE_URL}/key", headers=self._headers())
+        except httpx.HTTPError as exc:
+            # Unreachable is not the same as rejected, and saying "rejected"
+            # would send someone to regenerate a key that was never the problem.
+            return ("unreachable", f"Could not reach OpenRouter: {exc}")
+
+        if resp.status_code == 401:
+            # OpenRouter answers "User not found" for a key that was revoked or
+            # whose account is gone — distinct from a typo, and only fixable by
+            # issuing a new one.
+            gone = "user not found" in resp.text.lower()
+            detail = (
+                "OpenRouter no longer recognises this key — it was revoked, or the account it "
+                "belonged to is gone. Create a new one at openrouter.ai/keys and paste it below."
+                if gone else
+                "OpenRouter rejected this key. Check it was copied whole, then replace it below."
+            )
+            result = ("rejected", detail)
+        elif resp.status_code >= 400:
+            result = ("error", f"OpenRouter returned {resp.status_code} for the key check.")
+        else:
+            data = (resp.json() or {}).get("data") or {}
+            result = ("ok", _key_detail(data, len(self.starred)))
+
+        cls._key_state[self.api_key] = (time.time(), *result)
+        return result
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -158,27 +207,12 @@ class OpenRouterProvider:
                 state="not_configured",
                 detail="Add an OpenRouter key to reach several hundred hosted models with one account.",
             )
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(f"{BASE_URL}/key", headers=self._headers())
-            if resp.status_code == 401:
-                return Status(state="error", detail="OpenRouter rejected the API key.")
-            resp.raise_for_status()
-            data = (resp.json() or {}).get("data") or {}
-        except httpx.HTTPError as exc:
-            return Status(state="unreachable", detail=f"Could not reach OpenRouter: {exc}")
-
-        usage = data.get("usage")
-        limit = data.get("limit")
-        bits = [f"{len(self.starred)} model(s) starred"]
-        if isinstance(usage, (int, float)):
-            spent = f"${usage:.2f} used"
-            bits.append(f"{spent} of ${limit:.2f}" if isinstance(limit, (int, float)) else spent)
-        elif limit is None:
-            bits.append("no spend limit set")
-        if data.get("is_free_tier"):
-            bits.append("free tier")
-        return Status(state="ok", detail=" · ".join(bits), models=len(self.starred))
+        state, detail = await self.key_state()
+        if state == "ok":
+            return Status(state="ok", detail=detail, models=len(self.starred))
+        if state == "unreachable":
+            return Status(state="unreachable", detail=detail)
+        return Status(state="error", detail=detail)
 
     async def list_models(self) -> list[ModelInfo]:
         """Starred models only — this feeds the pickers, not the browser."""
@@ -310,7 +344,10 @@ def _explain(status: int, body: str, model: str) -> str:
     if status == 402 or "insufficient" in lowered or "credit" in lowered:
         return "OpenRouter says the account is out of credit. Top up, or star a model tagged free."
     if status == 401:
-        return "OpenRouter rejected the API key."
+        if "user not found" in lowered:
+            return ("OpenRouter no longer recognises your key — it was revoked, or its account "
+                    "is gone. Create a new one at openrouter.ai/keys and paste it into Settings.")
+        return "OpenRouter rejected your key. Replace it in Settings."
     if status == 404:
         return f"OpenRouter has no model called '{model}'. Check the id in the Models tab."
     if status == 429:
@@ -318,6 +355,20 @@ def _explain(status: int, body: str, model: str) -> str:
     if "moderation" in lowered or status == 403:
         return "OpenRouter's moderation refused this request for the chosen model."
     return f"OpenRouter returned {status}: {body[:300]}"
+
+
+def _key_detail(data: dict[str, Any], starred: int) -> str:
+    usage = data.get("usage")
+    limit = data.get("limit")
+    bits = [f"{starred} model(s) starred"]
+    if isinstance(usage, (int, float)):
+        spent = f"${usage:.2f} used"
+        bits.append(f"{spent} of ${limit:.2f}" if isinstance(limit, (int, float)) else spent)
+    elif limit is None:
+        bits.append("no spend limit set")
+    if data.get("is_free_tier"):
+        bits.append("free tier")
+    return " · ".join(bits)
 
 
 def _per_million(raw: Any) -> float:

@@ -136,7 +136,13 @@ async def openrouter_models(
         )
     except ProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    return {**result, "configured": provider.configured()}
+
+    # The catalog is a public endpoint, so this list renders identically whether
+    # the key is good, revoked, or absent. Without this the browser is a trap:
+    # you star models, wire them to agents, and find out at run time.
+    key_state, key_detail = await provider.key_state()
+    return {**result, "configured": provider.configured(),
+            "key_state": key_state, "key_detail": key_detail}
 
 
 @router.post("/openrouter/starred")

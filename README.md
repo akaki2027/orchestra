@@ -25,6 +25,35 @@ cd orchestra
 That creates a virtualenv, installs four dependencies, and opens `http://localhost:8600`.
 Python 3.10+ is the only prerequisite.
 
+![The desk — controlling agent, roster, and the inspection hall where interior and exterior work is separated](docs/screenshots/desk.png)
+
+---
+
+## Status
+
+Pre-release. Everything below is on `main` and works; **[CHANGELOG.md](CHANGELOG.md) is the running
+record**, including the measurements behind each claim and an explicit list of what is *not* built.
+
+| Area | State |
+|---|---|
+| Providers: Ollama, Anthropic, OpenRouter, OpenAI-compatible | working |
+| Parallel DAG execution, per-provider lanes | working, measured |
+| Privacy-tiered routing + per-run declaration | working, measured |
+| Agents: model + soul + role | working |
+| Model portal: pull, delete, disk, HF GGUF | working |
+| Hardware detection and fit rating | working |
+| Tools: filesystem, MCP, per-agent grants | working |
+| Chats, histories, projects | **not built** — session-only, no persistence |
+| OpenRouter discovery beyond search | **partial** — all 410 reachable by search, browse shows 60 |
+| Authentication | **none** — binds `127.0.0.1`, warns on `--host 0.0.0.0` |
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/agents.png" alt="Agents desk"><br><sub><b>Agents</b> — each is a model, a soul, and a role. Any agent on any provider.</sub></td>
+<td width="50%"><img src="docs/screenshots/tools.png" alt="Tools desk"><br><sub><b>Tools</b> — workspace, MCP servers, and what a small local agent is for.</sub></td>
+</tr>
+</table>
+
 ---
 
 ## What it actually does

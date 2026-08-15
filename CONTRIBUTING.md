@@ -81,3 +81,15 @@ README's design claims, and they should be re-run when you touch the relevant co
 
 Match the surrounding code. Comments explain *why* something is the way it is — the non-obvious
 constraint, the failure that motivated it — not what the next line does.
+
+## Recording what you changed
+
+`CHANGELOG.md` is how anyone arriving at this repo sees where it actually stands, so add to it under
+**Unreleased** as part of the change rather than afterwards.
+
+Two rules keep it worth reading:
+
+- **Numbers come from runs, not estimates.** If you claim something is faster, parallel, or blocked,
+  paste the output that shows it.
+- **Keep "Not built yet" honest.** A changelog that only advertises what works is a sales page. If
+  your change reveals a gap, add the gap.

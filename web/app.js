@@ -1254,7 +1254,16 @@ async function loadRouter() {
     data = await api(`/api/openrouter/models?q=${encodeURIComponent(q)}&free=${free}&vision=${vision}&limit=60`);
   } catch (err) { say("#routerAlert", err.message, "bad"); return; }
 
-  say("#routerAlert", data.configured ? "" : "Browsing works without a key. Add an OpenRouter key under Settings before an agent can actually use one of these.", "warn");
+  // `configured` only means a key exists. The catalogue is a public endpoint,
+  // so a revoked key browses all 400 models and fails at run time instead —
+  // which is exactly when it is most expensive to discover.
+  const KEY_WARNING = {
+    missing: "Browsing works without a key. Add an OpenRouter key under Settings before an agent can actually use one of these.",
+    rejected: `${data.key_detail} Until then you can star models, but no agent will be able to run one.`,
+    error: `${data.key_detail} Starring still works; running will not.`,
+    unreachable: data.key_detail,
+  };
+  say("#routerAlert", KEY_WARNING[data.key_state] || "", "warn");
   $("#routerCount").textContent = `${data.matched} of ${data.total}`;
 
   host.innerHTML = "";

@@ -292,6 +292,22 @@ function renderProviders() {
       el("input", { type: "number", min: "1", max: "32", id: `lane-${id}`, value: String(state.config.concurrency?.[id] ?? 4) }),
     ]));
   }
+  renderLocalLaneNote();
+}
+
+/* The local lane is the number that decides how many models run at once, and
+   nothing else on the page says so. Both ceilings below are real and neither is
+   Orchestra's to raise. */
+function renderLocalLaneNote() {
+  const lane = Number(state.config.concurrency?.ollama ?? 2);
+  const usable = state.hardware?.usable_gb;
+  const budget = usable
+    ? `Each one stays resident while it works, so ${lane} at once must fit in memory together — you have about ${usable} GB usable.`
+    : "Each one stays resident while it works, so they must all fit in memory together.";
+  $("#localLaneNote").textContent =
+    `Local lane ${lane}: up to ${lane} agent${lane === 1 ? "" : "s"} on this machine at once, each free to hold a different model. ` +
+    budget +
+    " Ollama also keeps its own limit on loaded models (OLLAMA_MAX_LOADED_MODELS, 3 by default); raise this lane above that and it will swap models in and out instead of running them together.";
 }
 
 async function saveProvider(id) {
@@ -314,6 +330,7 @@ $("#saveLanes").addEventListener("click", async () => {
   const concurrency = {};
   for (const id of Object.keys(state.providers)) concurrency[id] = Number($(`#lane-${id}`).value) || 4;
   state.config = await api("/api/config", { method: "PATCH", body: { concurrency } });
+  renderLocalLaneNote();
   flash($("#saveLanes"), "Saved");
 });
 
@@ -1317,6 +1334,7 @@ async function boot() {
   try { $("#homePath").textContent = (await api("/api/health")).home; } catch { /* cosmetic */ }
   state.config = await api("/api/config");
   renderPolicy();
+  await loadMachine();
   await loadProviders();
   await loadModels();
   await loadAgents();

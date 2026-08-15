@@ -285,14 +285,35 @@ In `~/.orchestra/config.json`, mode `0600`, on your machine only. Never in the r
 is gitignored. The API returns keys masked, and the UI never round-trips a real key back to the
 server.
 
-Environment variables override the file and are never written to disk:
+Two ways to supply a key, and the difference is where it ends up:
+
+| | Stored | Best for |
+|---|---|---|
+| **Settings screen** | `~/.orchestra/config.json`, mode 0600 | Using Orchestra normally |
+| **`.env` / environment** | Nowhere — read from the process each load | Development, CI, containers, secrets managers |
+
+`./run.sh` loads `.env` if it is present and prints which names it found, never their values.
+Copy `.env.example` to `.env` and fill in what you need:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-export OLLAMA_HOST=http://127.0.0.1:11434
-export OPENAI_BASE_URL=https://openrouter.ai/api/v1
-export OPENAI_API_KEY=...
+cp .env.example .env
+# edit .env, then:
+./run.sh
 ```
+
+An environment-supplied key **overrides** the stored file and is never written to it — the Settings
+screen shows the field as "from the environment" and refuses to edit it, so there is no path by
+which it lands on disk.
+
+Every env file shape is gitignored (`.env`, `.env.local`, `*.env`, …) with `.env.example` the single
+exception, and that is tested rather than assumed:
+
+```bash
+./scripts/check-secrets.sh
+```
+
+It scans every tracked file for key shapes and fails if any file that must never be committed has
+become trackable.
 
 Orchestra binds `127.0.0.1` by default. It has **no authentication**, so if you pass
 `--host 0.0.0.0` anyone who can reach the port can use your keys and your models. It warns you when

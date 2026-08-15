@@ -2,8 +2,19 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# Every env file, however it is named — .env.local and .env.production are just
+# as sensitive as .env, and listing only the one you thought of is how a key
+# reaches a public repo.
 .env
+.env.*
+*.env
+# The template is the exception: it holds names, never values.
+!.env.example
 
 # Never commit user config — it holds API keys.
 .orchestra/
 config.json
+
+# Local scratch
+*.orchestra-bak

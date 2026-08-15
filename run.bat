@@ -3,6 +3,18 @@ REM Orchestra launcher for Windows. Idempotent: safe to run every time.
 setlocal
 cd /d "%~dp0"
 
+REM Load .env if present. Keys supplied this way are never written to
+REM %USERPROFILE%\.orchestra\config.json - the app reads the environment on
+REM every load. Names are echoed, values never are.
+if exist .env (
+  for /f "usebackq tokens=1,* delims==" %%A in (".env") do (
+    echo %%A| findstr /r "^[ ]*#" >nul || if not "%%B"=="" (
+      set "%%A=%%B"
+      echo Loaded from .env: %%A
+    )
+  )
+)
+
 where python >nul 2>nul
 if errorlevel 1 (
   echo Python 3.10+ is required but was not found on PATH.

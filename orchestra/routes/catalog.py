@@ -127,12 +127,14 @@ async def openrouter_models(
     q: str = "",
     free: bool = False,
     vision: bool = False,
+    vendor: str = "",
     limit: int = 60,
 ) -> dict[str, Any]:
     provider = _openrouter()
     try:
         result = await provider.search(
-            query=q, free_only=free, vision_only=vision, limit=max(1, min(limit, 200))
+            query=q, free_only=free, vision_only=vision, vendor=vendor,
+            limit=max(1, min(limit, 400)),
         )
     except ProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

@@ -244,25 +244,31 @@ function renderProviders() {
 
     const fields = (PROVIDER_FIELDS[id] || []).map((f) => {
       const managed = env.includes(f.key);
+      const held = f.secret && cfg[`${f.key}_set`];
+
+      // A secret field starts EMPTY, never prefilled with its own mask. When the
+      // mask sat in the box, clicking at the end and pasting produced
+      // "sk-or-v…2da1sk-or-v1-…" — the server drops anything containing the
+      // mask character, so the save silently did nothing and the old key stayed.
+      const input = el("input", {
+        type: f.type,
+        id: `cfg-${id}-${f.key}`,
+        value: f.secret ? "" : (cfg[f.key] || ""),
+        placeholder: held ? `${cfg[f.key]} — paste a new key to replace it` : (f.ph || ""),
+        disabled: managed,
+        autocomplete: f.secret ? "off" : null,
+      });
+
+      let note;
+      if (managed) note = "Supplied by your environment, so it is not editable here and never written to disk.";
+      else if (held) note = "A key is held on this machine. Leave this empty to keep it, or paste a new one to replace it.";
+      else if (f.secret) note = "Held on this machine only, never sent anywhere but the provider.";
+      else note = f.note;
+
       return el("label", { class: "field" }, [
         el("span", { class: "field-label", text: managed ? `${f.label} — from the environment` : f.label }),
-        el("input", {
-          type: f.type,
-          id: `cfg-${id}-${f.key}`,
-          value: cfg[f.key] || "",
-          placeholder: f.ph || "",
-          disabled: managed,
-        }),
-        (managed || f.note || f.secret)
-          ? el("span", {
-              class: "note",
-              text: managed
-                ? "Supplied by your environment, so it is not editable here and never written to disk."
-                : f.secret
-                ? "Held on this machine only. Leave the masked value to keep the current key; clear the box to remove it."
-                : f.note,
-            })
-          : null,
+        input,
+        note ? el("span", { class: "note", text: note }) : null,
       ]);
     });
 
@@ -279,6 +285,26 @@ function renderProviders() {
         ...fields,
         el("div", { class: "row" }, [
           el("button", { class: "btn line sm", text: "Save and test", onclick: () => saveProvider(id) }),
+          // Clearing used to mean "empty the box and save". With the box empty
+          // by default that is no longer expressible, so removal gets its own
+          // control rather than a gesture nobody would guess.
+          (PROVIDER_FIELDS[id] || []).some((f) => f.secret && cfg[`${f.key}_set`] && !env.includes(f.key))
+            ? el("button", {
+                class: "btn refuse sm", text: "Remove key",
+                onclick: async () => {
+                  const go = await confirmRefuse(
+                    `Remove the ${p.label} key?`,
+                    "The key is deleted from this machine. Models from this provider stop working until you add another."
+                  );
+                  if (!go) return;
+                  const cleared = {};
+                  for (const f of PROVIDER_FIELDS[id] || []) if (f.secret) cleared[f.key] = "";
+                  state.config = await api("/api/config", { method: "PATCH", body: { providers: { [id]: cleared } } });
+                  await loadProviders();
+                  await loadModels();
+                },
+              })
+            : null,
         ]),
       ]),
     ]));
@@ -314,7 +340,12 @@ async function saveProvider(id) {
   const patch = {};
   for (const f of PROVIDER_FIELDS[id] || []) {
     const input = $(`#cfg-${id}-${f.key}`);
-    if (input && !input.disabled) patch[f.key] = input.value.trim();
+    if (!input || input.disabled) continue;
+    const value = input.value.trim();
+    // Empty secret box means "leave the stored key alone". Removal is its own
+    // button, so silence here can never destroy a credential.
+    if (f.secret && !value) continue;
+    patch[f.key] = value;
   }
   state.config = await api("/api/config", { method: "PATCH", body: { providers: { [id]: patch } } });
   await loadProviders();
@@ -1241,6 +1272,15 @@ $("#pullName").addEventListener("keydown", (e) => { if (e.key === "Enter") doPul
 /* ---------------------------------------------------------- OpenRouter */
 
 let routerTimer = null;
+let routerVendor = "";
+let routerLimit = 60;
+
+/* Any change to what is being asked for resets the page size — otherwise a
+   "show more" from one search silently carries into the next. */
+function resetRouter() {
+  routerLimit = 60;
+  loadRouter();
+}
 
 async function loadRouter() {
   const q = $("#routerQ").value.trim();
@@ -1251,7 +1291,8 @@ async function loadRouter() {
   if (!host.children.length) host.appendChild(el("p", { class: "empty", text: "Reading the catalogue…" }));
   let data;
   try {
-    data = await api(`/api/openrouter/models?q=${encodeURIComponent(q)}&free=${free}&vision=${vision}&limit=60`);
+    data = await api(`/api/openrouter/models?q=${encodeURIComponent(q)}&free=${free}&vision=${vision}`
+      + `&vendor=${encodeURIComponent(routerVendor)}&limit=${routerLimit}`);
   } catch (err) { say("#routerAlert", err.message, "bad"); return; }
 
   // `configured` only means a key exists. The catalogue is a public endpoint,
@@ -1264,11 +1305,40 @@ async function loadRouter() {
     unreachable: data.key_detail,
   };
   say("#routerAlert", KEY_WARNING[data.key_state] || "", "warn");
-  $("#routerCount").textContent = `${data.matched} of ${data.total}`;
+  // "60 of 413" was ambiguous about whether the rest existed. Say what is on
+  // screen and what is behind it.
+  $("#routerCount").textContent = data.models.length < data.matched
+    ? `showing ${data.models.length} of ${data.matched}`
+    : `${data.matched} of ${data.total}`;
+
+  const chips = $("#routerVendors");
+  chips.innerHTML = "";
+  if ((data.vendors || []).length > 1) {
+    chips.appendChild(el("button", {
+      class: "chip", "aria-pressed": String(!routerVendor), text: `All ${data.candidates}`,
+      onclick: () => { routerVendor = ""; resetRouter(); },
+    }));
+    for (const v of data.vendors.slice(0, 12)) {
+      chips.appendChild(el("button", {
+        class: "chip", "aria-pressed": String(routerVendor === v.id), text: `${v.id} ${v.count}`,
+        onclick: () => { routerVendor = routerVendor === v.id ? "" : v.id; resetRouter(); },
+      }));
+    }
+  }
+
+  const more = $("#routerMore");
+  more.innerHTML = "";
+  if (data.models.length < data.matched) {
+    more.appendChild(el("button", {
+      class: "btn line sm",
+      text: `Show ${Math.min(60, data.matched - data.models.length)} more`,
+      onclick: () => { routerLimit += 60; loadRouter(); },
+    }));
+  }
 
   host.innerHTML = "";
   if (!data.models.length) {
-    host.appendChild(el("p", { class: "empty", text: "Nothing matches. Try a vendor name like anthropic, or clear the filters." }));
+    host.appendChild(el("p", { class: "empty", text: "Nothing matches. Clear the filters, or star the id by hand below." }));
     return;
   }
 
@@ -1300,13 +1370,13 @@ async function toggleStar(id, starred) {
 
 $("#routerQ").addEventListener("input", () => {
   clearTimeout(routerTimer);
-  routerTimer = setTimeout(loadRouter, 220);
+  routerTimer = setTimeout(resetRouter, 220);
 });
 for (const id of ["#fFree", "#fVision"]) {
   $(id).addEventListener("click", (e) => {
     const on = e.currentTarget.getAttribute("aria-pressed") !== "true";
     e.currentTarget.setAttribute("aria-pressed", String(on));
-    loadRouter();
+    resetRouter();
   });
 }
 $("#routerAddGo").addEventListener("click", async () => {

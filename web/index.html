@@ -292,7 +292,7 @@ verdict, and DESIGN.md
     <div class="panel">
       <div class="panel-head"><h3>OpenRouter</h3><span class="spacer"></span><span class="chan" id="routerCount"></span></div>
       <div class="panel-body">
-        <p class="prose">One key, several hundred hosted models. Star the ones you want and they appear in every model picker; a dropdown of four hundred slugs helps nobody. An id the catalogue has not caught up with can be starred by hand.</p>
+        <p class="prose">One key, several hundred hosted models, newest first. Star the ones you want and they appear in every model picker; a dropdown of four hundred slugs helps nobody. An id the catalogue has not caught up with can be starred by hand.</p>
         <div class="row">
           <input type="search" id="routerQ" class="grow" placeholder="Search by name, vendor or description" aria-label="Search OpenRouter models">
           <button class="chip" id="fFree" aria-pressed="false">Free only</button>
@@ -302,8 +302,10 @@ verdict, and DESIGN.md
           <input type="text" id="routerAdd" class="grow" placeholder="Star an id by hand, e.g. some-lab/model-released-today" aria-label="Star a model id by hand">
           <button class="btn line sm" id="routerAddGo">Star id</button>
         </div>
+        <div class="row" id="routerVendors"></div>
         <div id="routerAlert"></div>
         <div id="routerList"></div>
+        <div class="row" id="routerMore"></div>
       </div>
     </div>
   </div>

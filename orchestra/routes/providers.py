@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, HTTPException, Body
 
 from .. import config
 from ..providers import PROVIDER_IDS, all_models, build, build_all
@@ -22,9 +22,13 @@ async def get_config() -> dict[str, Any]:
 async def patch_config(patch: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Apply a partial config update.
 
-    A masked secret echoed back from the UI is dropped rather than saved — that
-    is how an unchanged key survives a settings save instead of being
-    overwritten with its own display form.
+    A masked secret echoed back unchanged is dropped rather than saved — that is
+    how an unchanged key survives a settings save instead of being overwritten
+    with its own display form.
+
+    Anything that merely *contains* the mask is refused loudly instead. That
+    shape means a key was pasted onto the end of the masked value, and dropping
+    it silently told people they had saved a key when nothing had changed.
     """
     providers = patch.get("providers")
     if isinstance(providers, dict):
@@ -35,8 +39,20 @@ async def patch_config(patch: dict[str, Any] = Body(...)) -> dict[str, Any]:
             for secret in list(config.SECRET_FIELDS):
                 fields.pop(f"{secret}_set", None)
                 value = fields.get(secret)
-                if isinstance(value, str) and "…" in value:
-                    fields.pop(secret)
+                if not isinstance(value, str) or "…" not in value:
+                    continue
+                # The only legitimate masked value is the exact mask of what is
+                # already stored. Compare against that rather than pattern-
+                # matching the ellipsis.
+                stored = (config.load()["providers"].get(pid) or {}).get(secret)
+                if value.strip() == config.mask(stored):
+                    fields.pop(secret)   # untouched; keep what is stored
+                else:
+                    raise HTTPException(400, (
+                        "That value contains the masked form of your existing key with more text "
+                        "attached — the paste landed beside it instead of replacing it. Clear the "
+                        "box and paste the key on its own."
+                    ))
             # An explicit empty string means "clear this credential".
             for key, value in list(fields.items()):
                 if value == "":

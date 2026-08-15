@@ -168,7 +168,11 @@ class OpenRouterProvider:
                 }
             )
 
-        models.sort(key=lambda m: (m["vendor"].lower(), m["name"].lower()))
+        # Newest first. Alphabetical looks tidy and is actively hostile at this
+        # size: with 400+ models the first screen stopped at "d", so every model
+        # from google, meta, moonshotai, openai, qwen and x-ai was unreachable
+        # unless you already knew its name well enough to search for it.
+        models.sort(key=lambda m: -(m["created"] or 0))
         cls._catalog, cls._fetched_at = models, time.time()
         return models
 
@@ -177,12 +181,17 @@ class OpenRouterProvider:
         query: str = "",
         free_only: bool = False,
         vision_only: bool = False,
+        vendor: str = "",
         limit: int = 60,
     ) -> dict[str, Any]:
         models = await self.catalog()
         needle = query.strip().lower()
+        want_vendor = vendor.strip().lower()
 
-        matches = []
+        # Everything except the vendor filter. The chips are built from this,
+        # so choosing a vendor narrows the list without collapsing the row you
+        # chose from — otherwise picking one leaves no way back to the rest.
+        candidates = []
         for model in models:
             if free_only and not model["free"]:
                 continue
@@ -190,14 +199,29 @@ class OpenRouterProvider:
                 continue
             if needle and needle not in f"{model['id']} {model['name']} {model['description']}".lower():
                 continue
-            matches.append(model)
+            candidates.append(model)
+
+        matches = [m for m in candidates
+                   if not want_vendor or m["vendor"].lower() == want_vendor]
 
         starred = set(self.starred)
-        # Starred first so the models you actually use don't drift down the page.
-        matches.sort(key=lambda m: (m["id"] not in starred, m["vendor"].lower(), m["name"].lower()))
+        # Starred first so the models you actually use don't drift down the
+        # page; newest first after that, carried over from the catalog order.
+        matches.sort(key=lambda m: (m["id"] not in starred, -(m["created"] or 0)))
+
+        # Ordered by how much each vendor offers, so the chips lead with where
+        # there is most to look at.
+        counts: dict[str, int] = {}
+        for model in candidates:
+            counts[model["vendor"]] = counts.get(model["vendor"], 0) + 1
+        vendors = [{"id": v, "count": n} for v, n in
+                   sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
+
         return {
             "total": len(models),
             "matched": len(matches),
+            "candidates": len(candidates),
+            "vendors": vendors,
             "models": [{**m, "starred": m["id"] in starred} for m in matches[:limit]],
         }
 

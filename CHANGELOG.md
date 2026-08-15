@@ -89,6 +89,40 @@ ceilings where the number is edited: memory (each model stays resident while it 
 against detected usable RAM) and Ollama's own `OLLAMA_MAX_LOADED_MODELS`, which swaps models in and
 out rather than running them together if the lane is set above it.
 
+### A pasted API key could be silently discarded
+
+The worst bug found so far, because it made every other diagnosis wrong. Secret
+fields were prefilled with the mask of the stored key (`sk-or-v…2da1`). Clicking into
+that field and pasting — what everyone does — produced `sk-or-v…2da1sk-or-v1-…`, the
+server dropped anything containing the mask character, and the save reported success
+while nothing changed. You could paste a new key repeatedly and keep being told the
+old one was rejected.
+
+- Secret fields now start **empty**, with the mask as placeholder text. Empty means
+  "keep what is stored", so a paste always replaces rather than appends.
+- Removing a credential got its own button, since "empty the box and save" is no
+  longer expressible.
+- The server now **refuses** a value that contains the mask with more text attached,
+  with an explanation. Silently dropping user input is how this hid for so long.
+
+### OpenRouter model discovery
+
+410+ models were reachable only by typing an exact search term. An empty browse
+returned the first 60 sorted alphabetically by vendor, which stopped at `d` — so
+google, meta, moonshotai, openai, qwen and x-ai were invisible unless you already
+knew what you were looking for. "I cannot select different models" was the correct
+reading of the interface.
+
+- **Newest first** by default. `created` was already in the catalogue and simply
+  unused by the sort.
+- **Vendor chips** with counts, built from the results *before* the vendor filter is
+  applied, so choosing one narrows the list without collapsing the row you chose from.
+- **"showing 60 of 413"** and a Show more button, instead of a count that implied the
+  rest were unreachable.
+
+Verified: one click on `moonshotai 8` reaches `moonshotai/kimi-k3`, which no amount of
+scrolling could reach before.
+
 ### OpenRouter: a revoked key no longer looks healthy
 
 OpenRouter's model catalogue is a **public endpoint**. A revoked key therefore browses all 400+

@@ -86,11 +86,23 @@ class PlanningFailed(RuntimeError):
 
 
 def roster(agents: list[dict[str, Any]]) -> str:
+    """The routing table the big agent reads.
+
+    Capabilities belong here, not just roles. A grant the planner cannot see is
+    a grant it cannot route to: with the filesystem tool on one agent and no
+    mention of it in the roster, "read this file and list what it contains"
+    went to an agent that had no way to open anything.
+    """
     lines = []
     for agent in agents:
         caps = []
         if (agent.get("capabilities") or {}).get("research"):
             caps.append("can search the web")
+        for grant in agent.get("tools") or []:
+            if grant == "filesystem":
+                caps.append("can read and search files in the workspace folder")
+            elif grant.startswith("mcp:"):
+                caps.append(f"can use the {grant[4:]} tools")
         suffix = f" ({', '.join(caps)})" if caps else ""
         lines.append(f"- {agent['id']}: {agent.get('name') or agent['id']} — {agent['role']}{suffix}")
     return "\n".join(lines)

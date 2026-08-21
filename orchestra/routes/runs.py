@@ -8,7 +8,7 @@ from fastapi import APIRouter, Body
 from fastapi.responses import StreamingResponse
 
 from .. import agents as agent_store
-from .. import config, planner, runner
+from .. import config, planner, privacy, runner
 from ..providers import build
 from ..providers.base import Msg, ProviderError
 from .chat import SSE_HEADERS, sse
@@ -30,10 +30,27 @@ async def run(payload: dict[str, Any] = Body(...)) -> StreamingResponse:
     mode = payload.get("mode") or "auto"
 
     async def events():
+        # Installed before planning, not inside the Run: the planner's call to
+        # the big agent carries the user's raw request, and for the recommended
+        # setup (strongest model as orchestrator) that call is the one most
+        # likely to leave the machine. It belongs on the declaration.
+        ledger = privacy.Ledger(privacy.Policy.from_config(cfg))
+        token = privacy.use_ledger(ledger)
+        try:
+            async for event in _events(ledger):
+                yield event
+        finally:
+            privacy.reset_ledger(token)
+
+    async def _events(ledger: privacy.Ledger):
+        # Local copy: planning may move the big agent to a local model, and
+        # rebinding the enclosing name would unbind every read before it.
+        chief = dict(orchestrator)
+
         if not request_text:
             yield sse({"type": "error", "message": "Nothing to send."})
             return
-        if not orchestrator["provider"] or not orchestrator["model"]:
+        if not chief["provider"] or not chief["model"]:
             yield sse({"type": "error", "message": "Choose a model for the big agent first."})
             return
 
@@ -81,26 +98,51 @@ async def run(payload: dict[str, Any] = Body(...)) -> StreamingResponse:
         else:
             try:
                 plan = await planner.make_plan(
-                    orchestrator["provider"], orchestrator["model"], request_text, available
+                    chief["provider"], chief["model"], request_text, available
                 )
+            except privacy.BlockedEgress as blocked:
+                # Strict mode refused to send the request to a hosted big agent.
+                # This is neither a PlanningFailed nor a ProviderError, so it used
+                # to escape the generator and kill the stream with zero events —
+                # the user saw nothing at all. Reroute planning the same way the
+                # runner reroutes a blocked sub-agent.
+                local = await runner.find_local_model(privacy.Policy.from_config(cfg))
+                if not local:
+                    yield sse({"type": "error", "message": (
+                        f"{blocked} No local model is available to plan with, so there is "
+                        "nowhere to move this step. Install a local model, or switch the "
+                        "border policy to Redact."
+                    )})
+                    return
+                yield sse({"type": "planner_rerouted", "from": chief["model"],
+                           "to": local["model"], "categories": blocked.categories})
+                chief = dict(local)
+                try:
+                    plan = await planner.make_plan(
+                        chief["provider"], chief["model"], request_text, available
+                    )
+                except (planner.PlanningFailed, ProviderError, privacy.BlockedEgress) as exc:
+                    yield sse({"type": "error", "message": f"Planning failed after rerouting: {exc}"})
+                    return
             except (planner.PlanningFailed, ProviderError) as exc:
                 # Planning failed — answer directly rather than dead-ending.
                 yield sse({"type": "plan_failed", "message": str(exc)})
                 try:
-                    provider = build(orchestrator["provider"])
+                    provider = build(chief["provider"])
                     async for chunk in provider.chat(
-                        orchestrator["model"],
+                        chief["model"],
                         [Msg(role="user", content=request_text)],
                         max_tokens=8192,
                     ):
                         if chunk.type == "text":
                             yield sse({"type": "token", "text": chunk.text})
-                    yield sse({"type": "done", "usage": {}})
+                    yield sse({"type": "done", "usage": {},
+                               "privacy": ledger.summary(), "restore": ledger.mapping})
                 except ProviderError as inner:
                     yield sse({"type": "error", "message": str(inner)})
                 return
 
-        execution = runner.Run(plan, by_id, request_text, orchestrator, cfg)
+        execution = runner.Run(plan, by_id, request_text, chief, cfg, ledger=ledger)
         async for event in execution.stream():
             yield sse(event)
 

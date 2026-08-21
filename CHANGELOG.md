@@ -10,6 +10,42 @@ Orchestra has not cut a release yet. Everything below is on `main`.
 
 ## Unreleased
 
+### Three bugs found by tracing a real run end to end
+
+`scripts/trace_run.py` runs the same `planner.make_plan` and `runner.Run` the HTTP route
+drives, with a tracing wrapper around every provider, and prints each model call verbatim:
+system prompt, user prompt, reply, timing, and whether it stayed on the machine. Comparing
+what it saw against the declaration is what surfaced these.
+
+**1. The planner's call was missing from the declaration.** The ledger was installed inside
+`Run.execute()`, but planning happens before a `Run` exists. The tracer counted 5 model calls
+and the receipt listed 4 — the absent one being the planner's, which carries the user's raw
+request and, in the recommended setup (strongest model as orchestrator), is the call most
+likely to leave the machine. Protection still applied; only the recording was missing, which
+is arguably worse than a visible failure. The ledger is now created in the route and passed
+into `Run`, so it records from before planning. Re-traced: 6 calls, 6 rows, match.
+
+**2. Strict mode killed the stream with zero events.** `BlockedEgress` is neither a
+`PlanningFailed` nor a `ProviderError`, so a blocked planning call escaped the SSE generator
+uncaught. With a hosted orchestrator, strict mode, and anything sensitive in the request, the
+user got a dead stream and no message. Planning now reroutes to a local model exactly as a
+blocked sub-agent does, and says so with a `planner_rerouted` event; with no local model
+available it emits a clean, actionable error instead.
+
+**3. The planner could not see tool grants.** `roster()` surfaced the research capability but
+not tools, so "read this file and list what it contains" was routed to an agent with no way to
+open anything. Grants now appear in the roster line the planner routes on.
+
+Verified end to end afterwards, strict mode with secrets in the request and a hosted big agent:
+the hosted provider received `0 chars` and the block was recorded, planning moved to
+`llama3.2:1b`, the run completed on local models, and the declaration showed 4 calls / 3 local
+/ 1 blocked. Nothing left the machine.
+
+Also observed, and behaving as documented: a 3B local model given the filesystem tool emitted
+well-formed call blocks, then picked wrong paths and exhausted the 5-step ceiling on one run
+and made no call at all on the next. The mechanism is sound; the model is not. That is what the
+small-model warning is for.
+
 ### Tools — filesystem, MCP, and per-agent grants
 
 Agents could only produce text. They can now read and write files in one nominated folder, and call

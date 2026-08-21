@@ -153,6 +153,37 @@ async def run_agent(
         yield chunk
 
 
+async def find_local_model(policy: privacy.Policy) -> dict[str, str] | None:
+    """A model on this machine to reroute blocked work to.
+
+    Module level because planning needs it as much as any sub-agent does: with a
+    hosted orchestrator and strict mode, the very first call is the one that
+    gets refused.
+    """
+    configured = policy.local_fallback
+    if configured:
+        try:
+            if build(configured["provider"]).is_local():
+                return dict(configured)
+        except KeyError:
+            pass
+
+    for provider_id in ("ollama", "openai_compat"):
+        try:
+            provider = build(provider_id)
+        except KeyError:
+            continue
+        if not provider.configured() or not provider.is_local():
+            continue
+        try:
+            models = await provider.list_models()
+        except Exception:  # noqa: BLE001
+            continue
+        if models:
+            return {"provider": provider_id, "model": models[0].id}
+    return None
+
+
 class Run:
     """One orchestrated execution, emitting events onto an async queue."""
 
@@ -163,6 +194,7 @@ class Run:
         request: str,
         orchestrator: dict[str, str],
         cfg: dict[str, Any] | None = None,
+        ledger: privacy.Ledger | None = None,
     ) -> None:
         cfg = cfg or config.load()
         self.cfg = cfg
@@ -175,7 +207,11 @@ class Run:
         self.events: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         self.usage = {"input_tokens": 0, "output_tokens": 0}
         self.policy = privacy.Policy.from_config(cfg)
-        self.ledger = privacy.Ledger(self.policy)
+        # Accepts a ledger that is already recording. Planning happens before a
+        # Run exists, and the planner sends the raw request to the big agent —
+        # the largest single crossing in the whole run. A ledger created here
+        # would start after it and the declaration would omit it.
+        self.ledger = ledger if ledger is not None else privacy.Ledger(self.policy)
 
     def emit(self, event: dict[str, Any]) -> None:
         self.events.put_nowait(event)
@@ -194,34 +230,8 @@ class Run:
         """
         if hasattr(self, "_local_cache"):
             return self._local_cache
-
-        chosen: dict[str, str] | None = None
-        configured = self.policy.local_fallback
-        if configured:
-            try:
-                if build(configured["provider"]).is_local():
-                    chosen = dict(configured)
-            except KeyError:
-                chosen = None
-
-        if chosen is None:
-            for provider_id in ("ollama", "openai_compat"):
-                try:
-                    provider = build(provider_id)
-                except KeyError:
-                    continue
-                if not provider.configured() or not provider.is_local():
-                    continue
-                try:
-                    models = await provider.list_models()
-                except Exception:  # noqa: BLE001
-                    continue
-                if models:
-                    chosen = {"provider": provider_id, "model": models[0].id}
-                    break
-
-        self._local_cache = chosen
-        return chosen
+        self._local_cache = await find_local_model(self.policy)
+        return self._local_cache
 
     async def _run_task(
         self,
